@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8" />
+    <title>Calendrier des Émissions</title>
+    <style>
+        body{font-family:"Segoe UI",Roboto,Arial,sans-serif;margin:0;background:#0f0f0f;color:#eee;transition:background .3s,color .3s}
+        h1{margin:0}
+
+        #topbar{position:sticky;top:0;z-index:1000;background:inherit;padding:10px 0 15px;border-bottom:2px solid #444;display:flex;flex-direction:column;align-items:center;gap:12px}
+        #topbar.scrolled{box-shadow:0 2px 10px rgba(0,0,0,.35)}
+
+        .controls,.extra-controls{text-align:center}
+
+        form{margin:0;display:flex;justify-content:center;align-items:center;gap:10px;flex-wrap:nowrap;max-width:980px}
+        form input,form button{padding:6px 8px;font-size:14px;border:1px solid #555;border-radius:6px;background:#1e1e1e;color:#eee}
+        form input::placeholder{color:#aaa}
+        #date{width:140px}
+        #title{flex:1 1 280px;min-width:240px}
+        #season,#episode{width:160px}
+
+        .btn-group{display:flex;gap:10px}
+        .btn-primary{background:#2b77ff;border-color:#2b77ff;color:#fff}
+        .btn-secondary{background:#2b2b2b;border-color:#555;color:#eee}
+
+        #tmdbSearch{width:980px;max-width:95vw;padding:6px 8px;border:1px solid #555;border-radius:6px;background:#1e1e1e;color:#eee}
+        #tmdbResults{background:#1e1e1e;color:#eee;border:1px solid #444;max-height:260px;overflow-y:auto;margin-top:4px;border-radius:6px;box-shadow:0 2px 8px rgba(0,0,0,.4);width:980px;max-width:95vw}
+        #tmdbResults[hidden]{display:none}
+        #tmdbResults div{padding:8px 10px;cursor:pointer}
+        #tmdbResults div:hover{background:#333}
+        
+        /* Notification style */
+        #notification{position:fixed;bottom:20px;right:20px;background:#2b77ff;color:#fff;padding:10px 15px;border-radius:6px;box-shadow:0 4px 12px rgba(0,0,0,.3);z-index:10000;opacity:0;transition:opacity .3s,transform .3s;transform:translateY(20px)}
+        #notification.show{opacity:1;transform:translateY(0)}
+        #notification.error{background:#ff4444}
+        #notification.info{background:#ffaa00}
+
+        #progressContainer {
+            width: 80%;
+            max-width: 600px;
+            height: 18px;
+            background: #333;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 5px;
+            display: none;
+        }
+        #progressBar {
+            height: 100%;
+            width: 0;
+            background: linear-gradient(90deg, #2b77ff, #5aa8ff);
+            transition: width 0.2s ease;
+        }
+
+        .calendar{display:grid;gap:8px;margin-top:10px}
+        .calendar.month{grid-template-columns:repeat(7,1fr)}
+        .calendar.week{grid-template-columns:repeat(7,1fr)}
+
+        .day{border-radius:10px;background:#1b1b1b;min-height:120px;display:flex;flex-direction:column;position:relative;padding:6px;box-shadow:0 2px 6px rgba(0,0,0,.5);transition:transform .15s,box-shadow .15s,background .3s;border:1px solid #2a2a2a}
+        .day:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(0,0,0,.6)}
+        .day-number{font-weight:bold;font-size:16px;color:#bbb;position:absolute;top:6px;right:8px}
+        .day:empty::after{content:"";display:block;flex:1}
+        .day.drag-over{outline:2px dashed #2b77ff;background:#162038}
+
+        .weekdays{font-weight:bold;text-align:center;background:#1c1c1c;border-radius:8px;overflow:hidden;display:grid;grid-template-columns:repeat(7,1fr)}
+        .weekdays div{padding:10px 0;border:1px solid #2a2a2a;background:#1f1f1f;font-size:14px;color:#ddd}
+
+        .event{background:linear-gradient(135deg,#2090ff,#5aa8ff);color:#fff;font-size:12px;margin-top:24px;padding:4px 6px;border-radius:6px;display:flex;align-items:center;gap:6px;cursor:grab;transition:transform .15s,box-shadow .15s}
+        .event:active{cursor:grabbing}
+        .event:hover{transform:translateY(-1px);box-shadow:0 2px 6px rgba(0,0,0,.4)}
+        .event.watched{background:linear-gradient(135deg,#1e8f4a,#51c77b)}
+        .event img{width:22px;height:auto;border-radius:4px;flex-shrink:0}
+        .event .actions{display:flex;align-items:center;gap:6px;margin-left:auto}
+        .event .actions .btn{font-size:14px;padding:0 2px;cursor:pointer}
+        .event .btn.del{color:#ffd6d6}
+        .event .btn.dup{color:#ffffaa}
+    </style>
+</head>
+<body>
+    <div id="topbar">
+        <h1>📅 Calendrier des Émissions</h1>
+
+        <div class="controls">
+            <button id="prevBtn">◀</button>
+            <span id="monthLabel"></span>
+            <button id="nextBtn">▶</button>
+            <button id="toggleViewBtn">Basculer en mode Semaine</button>
+        </div>
+
+        <div class="extra-controls">
+            <label for="tmdbKeyInput">Clé TMDB (v3) :</label>
+            <input id="tmdbKeyInput" type="text" placeholder="Ex: 123abc456def..." />
+            <button id="saveKeyBtn" class="btn-secondary">Enregistrer la clé</button>
+        </div>
+
+        <form id="addForm">
+            <input type="hidden" id="editIndex" />
+            <input type="date" id="date" required />
+            <input type="text" id="title" placeholder="Titre de l'émission" required />
+            <input type="text" id="season" placeholder="Saison (ex: S01 ou 1)" required />
+            <input type="text" id="episode" placeholder="Épisode (ex: E01 ou 1)" required />
+            <div class="btn-group">
+                <button type="submit" class="btn-primary">Enregistrer</button>
+                <button type="button" id="resetBtn" class="btn-secondary">Annuler</button>
+            </div>
+        </form>
+
+        <div class="extra-controls">
+            <input type="text" id="tmdbSearch" placeholder="Rechercher une série sur TMDB..." autocomplete="off" />
+            <div id="tmdbResults" hidden></div>
+        </div>
+        
+        <div class="extra-controls" style="display:flex; gap: 10px; flex-wrap: wrap;">
+            <button id="exportBtn" class="btn-secondary">⬇️ Exporter (Sauvegarde)</button>
+            <input type="file" id="importFile" accept=".json" hidden />
+            <button id="importBtn" class="btn-secondary">⬆️ Importer (Restaurer)</button>
+            <button id="deleteSeriesBtn" class="btn-secondary" style="display:none;">🗑 Supprimer Série</button>
+            <button id="renameSeriesBtn" class="btn-secondary" style="display:none;">✏️ Renommer Série</button>
+        </div>
+        
+        <div id="progressContainer">
+            <div id="progressBar"></div>
+        </div>
+    </div>
+
+    <main>
+        <div class="calendar weekdays">
+            <div>Lun</div><div>Mar</div><div>Mer</div><div>Jeu</div><div>Ven</div><div>Sam</div><div>Dim</div>
+        </div>
+        <div id="calendar" class="calendar month"></div>
+    </main>
+    
+    <div id="notification"></div>
+
+    <script>
+        /* ========================================================== */
+        /* CONFIGURATION                         */
+        /* ========================================================== */
+        const TMDB_API_KEY_DEFAULT = "⚠️_TA_CLE_V3_ICI_⚠️"; // Optionnel: remplace ici
+        const tmdbKeyInput = document.getElementById("tmdbKeyInput");
+        const saveKeyBtn = document.getElementById("saveKeyBtn");
+
+        function getApiKey() {
+            return localStorage.getItem("tmdb_api_key") || TMDB_API_KEY_DEFAULT;
+        }
+        function setApiKey(k) {
+            localStorage.setItem("tmdb_api_key", k);
+        }
+        (function initApiKeyUI(){
+            const k = localStorage.getItem("tmdb_api_key") || TMDB_API_KEY_DEFAULT;
+            tmdbKeyInput.value = k.includes("⚠️") ? "" : k;
+        })();
+
+        saveKeyBtn.addEventListener("click", () => {
+            const k = tmdbKeyInput.value.trim();
+            if (!k) { notify("Entre une clé TMDB v3 valide", "error"); return; }
+            setApiKey(k);
+            notify("🔑 Clé TMDB enregistrée");
+        });
+
+        /* ========================================================== */
+        /* DONNÉES                            */
+        /* ========================================================== */
+        let events = JSON.parse(localStorage.getItem("events")) || [];
+        let viewMode = "month", currentDate = new Date();
+        let currentSeriesTitle = null;
+        
+        // Fonction de sauvegarde SILENCIEUSE dans le localStorage du navigateur (non liée à un téléchargement)
+        function saveEvents() {
+            localStorage.setItem("events", JSON.stringify(events));
+        }
+
+
+        function notify(msg, type="success"){
+            const n=document.getElementById("notification");
+            n.className=""; n.textContent=msg;
+            if(type==="error") n.classList.add("error");
+            if(type==="info") n.classList.add("info");
+            n.classList.add("show");
+            setTimeout(()=>n.classList.remove("show"), 2000);
+        }
+
+
+        /* ========================================================== */
+        /* CALENDRIER                          */
+        /* ========================================================== */
+
+        const cal = document.getElementById("calendar");
+        const monthLabel = document.getElementById("monthLabel");
+        const toggleViewBtn = document.getElementById("toggleViewBtn");
+
+        const dateInput = document.getElementById("date");
+        const titleInput = document.getElementById("title");
+        const seasonInput = document.getElementById("season");
+        const episodeInput = document.getElementById("episode");
+        const editIndexInput = document.getElementById("editIndex");
+
+        function generateCalendar(){
+            cal.innerHTML="";
+            if(viewMode==="month") generateMonth(currentDate);
+            else generateWeek(currentDate);
+        }
+        function generateMonth(date){
+            cal.className="calendar month";
+            const y=date.getFullYear(), m=date.getMonth();
+            monthLabel.textContent=date.toLocaleString("fr-FR",{month:"long",year:"numeric"});
+            const first=new Date(y,m,1), last=new Date(y,m+1,0);
+            const start=(first.getDay()+6)%7, days=last.getDate();
+            for(let i=0;i<start;i++){const empty=document.createElement("div");empty.className="day";cal.appendChild(empty);}
+            for(let d=1;d<=days;d++){const ds=`${y}-${String(m+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;cal.appendChild(renderDay(ds,d));}
+        }
+        function generateWeek(date){
+            cal.className="calendar week";
+            const y=date.getFullYear(),m=date.getMonth(),d=date.getDate();
+            const cur=new Date(y,m,d), monday=new Date(cur);
+            monday.setDate(d-((cur.getDay()+6)%7));
+            
+            const monthName = monday.toLocaleString("fr-FR", { month: "long" });
+            const yearNum = monday.getFullYear();
+            
+            // Calcul du dernier jour de la semaine
+            const sunday = new Date(monday);
+            sunday.setDate(monday.getDate() + 6);
+            
+            monthLabel.textContent=`Semaine du ${monday.getDate()} ${monthName} ${yearNum}`;
+            
+            for(let i=0;i<7;i++){
+                const dd=new Date(monday); dd.setDate(monday.getDate()+i);
+                const ds=`${dd.getFullYear()}-${String(dd.getMonth()+1).padStart(2,"0")}-${String(dd.getDate()).padStart(2,"0")}`;
+                cal.appendChild(renderDay(ds,dd.getDate()));
+            }
+        }
+
+        function renderDay(dateStr,dnum){
+            const day=document.createElement("div"); 
+            day.className="day"; 
+            day.dataset.date=dateStr;
+
+            day.addEventListener("click",(e)=>{ if(!e.target.closest(".event")) dateInput.value=dateStr; });
+            day.addEventListener("dragover",e=>{e.preventDefault(); day.classList.add("drag-over");});
+            day.addEventListener("dragleave",()=>day.classList.remove("drag-over"));
+            day.addEventListener("drop",e=>{
+                e.preventDefault(); day.classList.remove("drag-over");
+                const idx=e.dataTransfer.getData("text/plain");
+                if(idx){events[idx].date=dateStr; saveEvents(); generateCalendar();}
+            });
+
+            const num=document.createElement("div"); num.className="day-number"; num.textContent=dnum; day.appendChild(num);
+
+            events.forEach((ev,idx)=>{
+                if(ev.date!==dateStr) return;
+                const item=document.createElement("div"); item.className="event"; if(ev.watched)item.classList.add("watched");
+                item.draggable=true; item.addEventListener("dragstart",e=>{e.dataTransfer.setData("text/plain",idx);});
+                
+                // Poster
+                if(ev.poster){const a=document.createElement("a"); a.href=ev.tmdbUrl||"#"; a.target="_blank"; const img=document.createElement("img"); img.src=ev.poster; a.appendChild(img); item.appendChild(a);}
+                
+                const label=document.createElement("span"); label.textContent=`${ev.title} - ${ev.season}${ev.episode}`;
+                const actions=document.createElement("div"); actions.className="actions";
+                
+                // Checkbox
+                const chk=document.createElement("input"); chk.type="checkbox"; chk.checked=ev.watched;
+                chk.addEventListener("change",()=>{ev.watched=chk.checked; saveEvents(); generateCalendar();});
+                
+                // Dupliquer
+                const dup=document.createElement("span"); dup.className="btn dup"; dup.textContent="📑";
+                dup.addEventListener("click",(e)=>{e.stopPropagation(); events.push({...ev}); saveEvents(); generateCalendar(); notify("Épisode dupliqué");});
+                
+                // Supprimer
+                const del=document.createElement("span"); del.className="btn del"; del.textContent="❌";
+                del.addEventListener("click",(e)=>{
+                    e.stopPropagation(); 
+                    if(confirm("Supprimer cet épisode ?")){
+                        events.splice(idx,1); saveEvents(); generateCalendar(); notify("Épisode supprimé");
+                    }
+                });
+                
+                actions.append(chk,dup,del);
+                item.append(label,actions);
+
+                // Clic pour éditer
+                item.addEventListener("click",(e)=>{
+                    if([chk,dup,del].includes(e.target) || e.target.closest("a")) return;
+                    editIndexInput.value=idx;
+                    dateInput.value=ev.date;
+                    titleInput.value=ev.title;
+                    seasonInput.value=ev.season;
+                    episodeInput.value=ev.episode;
+                    currentSeriesTitle=ev.title;
+                    document.getElementById("deleteSeriesBtn").style.display="inline-block";
+                    document.getElementById("renameSeriesBtn").style.display="inline-block";
+                    episodeInput.focus();
+                });
+
+                day.appendChild(item);
+            });
+            return day;
+        }
+
+        /* ========================================================== */
+        /* FORMULAIRE                         */
+        /* ========================================================== */
+        document.getElementById("addForm").addEventListener("submit",(e)=>{
+            e.preventDefault();
+            const idx=editIndexInput.value;
+            const payload={date:dateInput.value,title:titleInput.value,season:seasonInput.value.trim(),episode:episodeInput.value.trim()};
+            
+            if(!payload.date||!payload.title||!payload.season||!payload.episode) return;
+            
+            if(idx!==""){
+                events[idx] = { ...events[idx], ...payload };
+            }
+            else{
+                events.push({...payload,watched:false});
+            }
+            
+            saveEvents(); editIndexInput.value=""; e.target.reset(); dateInput.value=payload.date; generateCalendar();
+            notify("✅ Épisode enregistré");
+        });
+        document.getElementById("resetBtn").addEventListener("click",()=>{
+            editIndexInput.value="";
+            document.getElementById("addForm").reset();
+            document.getElementById("deleteSeriesBtn").style.display="none";
+            document.getElementById("renameSeriesBtn").style.display="none";
+        });
+        
+        /* ========================================================== */
+        /* BOUTONS SÉRIE / FILTRE                   */
+        /* ========================================================== */
+        
+        document.getElementById("deleteSeriesBtn").addEventListener("click",()=>{
+            if(!currentSeriesTitle) return;
+            if(confirm(`Supprimer tous les épisodes de "${currentSeriesTitle}" ?`)){
+                const before=events.length;
+                events=events.filter(e=>e.title!==currentSeriesTitle);
+                saveEvents(); generateCalendar();
+                notify(`🗑 ${before-events.length} épisodes supprimés de "${currentSeriesTitle}"`);
+                currentSeriesTitle=null;
+                document.getElementById("deleteSeriesBtn").style.display="none";
+                document.getElementById("renameSeriesBtn").style.display="none";
+            }
+        });
+
+        document.getElementById("renameSeriesBtn").addEventListener("click",()=>{
+            if(!currentSeriesTitle) return;
+            const newName=prompt("Nouveau nom pour la série :", currentSeriesTitle);
+            if(newName && newName.trim()!=="" && newName!==currentSeriesTitle){
+                events.forEach(ev=>{ if(ev.title===currentSeriesTitle) ev.title=newName; });
+                saveEvents(); generateCalendar();
+                notify(`✏️ Série renommée : "${currentSeriesTitle}" → "${newName}"`);
+                currentSeriesTitle=newName;
+            }
+        });
+        
+        /* ========================================================== */
+        /* EXPORT / IMPORT (Manuel)                 */
+        /* ========================================================== */
+        
+        document.getElementById("exportBtn").addEventListener("click",()=>{
+            // Fonction d'exportation manuelle (déclenche un téléchargement unique)
+            const jsonContent = JSON.stringify(events,null,2);
+            const blob=new Blob([jsonContent],{type:"application/json"});
+            const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="calendar_events_manual_export.json"; a.click();
+            URL.revokeObjectURL(a.href);
+            notify("Sauvegarde manuelle exportée (Fichier téléchargé)");
+        });
+        document.getElementById("importBtn").addEventListener("click",()=>document.getElementById("importFile").click());
+        document.getElementById("importFile").addEventListener("change",(e)=>{
+            // Fonction d'importation manuelle
+            const f=e.target.files[0]; if(!f) return;
+            const r=new FileReader();
+            r.onload=(ev)=>{ try{
+                const imp=JSON.parse(ev.target.result);
+                if(Array.isArray(imp)){ events=imp; saveEvents(); generateCalendar(); notify("Import réussi ✅"); }
+                else notify("JSON invalide","error");
+            }catch{ notify("Erreur import fichier","error"); } };
+            r.readAsText(f);
+        });
+
+        /* ========================================================== */
+        /* TMDB                              */
+        /* ========================================================== */
+        const tmdbSearch=document.getElementById("tmdbSearch");
+        const tmdbResults=document.getElementById("tmdbResults");
+        
+        function debounce(fn, ms=350){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), ms); }; }
+        document.addEventListener("click",(e)=>{ if(!tmdbResults.contains(e.target) && !tmdbSearch.contains(e.target)) tmdbResults.hidden=true; });
+        document.addEventListener("keydown",(e)=>{ if(e.key==="Escape") tmdbResults.hidden=true; });
+
+        const performSearch=debounce(async(q)=>{
+            tmdbResults.innerHTML="";
+            if(!q || q.length<2){ tmdbResults.hidden=true; return; }
+            const key=getApiKey();
+            if(!key || key.includes("⚠️")){ tmdbResults.innerHTML="<div>⚠️ Ajoute ta clé TMDB (v3) ci-dessus.</div>"; tmdbResults.hidden=false; return; }
+            try{
+                const res=await fetch(`https://api.themoviedb.org/3/search/tv?api_key=${key}&query=${encodeURIComponent(q)}&language=fr-FR`);
+                const data=await res.json();
+                if(data.status_code){ tmdbResults.innerHTML=`<div>❌ TMDB: ${data.status_message}</div>`; tmdbResults.hidden=false; return; }
+                const list=Array.isArray(data.results)?data.results:[];
+                if(list.length===0){ tmdbResults.innerHTML=`<div>Aucun résultat pour « ${q} »</div>`; tmdbResults.hidden=false; return; }
+                list.slice(0,12).forEach(show=>{
+                    const year=show.first_air_date?show.first_air_date.slice(0,4):"?";
+                    const div=document.createElement("div");
+                    div.textContent=`${show.name} (${year})`;
+                    div.addEventListener("click",()=>{
+                        tmdbResults.hidden=true;
+                        document.getElementById("title").value=show.name;
+                        currentSeriesTitle=show.name;
+                        document.getElementById("deleteSeriesBtn").style.display="inline-block";
+                        document.getElementById("renameSeriesBtn").style.display="inline-block";
+                        loadFromTMDB(show.id);
+                    });
+                    tmdbResults.appendChild(div);
+                });
+                tmdbResults.hidden=false;
+            }catch(err){ console.error(err); tmdbResults.innerHTML="<div>❌ Erreur réseau TMDB</div>"; tmdbResults.hidden=false; }
+        }, 350);
+
+        tmdbSearch.addEventListener("input",(e)=>performSearch(e.target.value.trim()));
+
+        async function loadFromTMDB(tvId){
+            const key=getApiKey();
+            if(!key || key.includes("⚠️")){ notify("Ajoute ta clé TMDB (v3) avant l'import","error"); return; }
+
+            try{
+                const res=await fetch(`https://api.themoviedb.org/3/tv/${tvId}?api_key=${key}&language=fr-FR`);
+                const data=await res.json();
+                if(data.status_code){ notify(`TMDB: ${data.status_message}`,"error"); return; }
+
+                const title=data.name;
+                const posterUrl = data.poster_path ? ("https://image.tmdb.org/t/p/w92"+data.poster_path) : null;
+                const tmdbUrl   = `https://www.themoviedb.org/tv/${tvId}`;
+
+                let added=0, updated=0, enriched=0;
+
+                for(const season of (data.seasons||[])){
+                    if(!season.season_number && season.season_number !== 0) continue;
+
+                    const resS=await fetch(`https://api.themoviedb.org/3/tv/${tvId}/season/${season.season_number}?api_key=${key}&language=fr-FR`);
+                    const seasonData=await resS.json();
+                    
+                    (seasonData.episodes||[]).forEach(ep=>{
+                        if(!ep.air_date) return;
+                        
+                        const newEv={ 
+                            date:ep.air_date, 
+                            title, 
+                            season:"S"+String(ep.season_number).padStart(2,"0"), 
+                            episode:"E"+String(ep.episode_number).padStart(2,"0"), 
+                            watched:false, 
+                            tvId, 
+                            poster:posterUrl, 
+                            tmdbUrl 
+                        };
+                        
+                        const i=events.findIndex(e=>e.title===newEv.title && e.season===newEv.season && e.episode===newEv.episode);
+                        
+                        if(i===-1){ 
+                            events.push(newEv); 
+                            added++; 
+                        }
+                        else {
+                            if(events[i].date!==newEv.date){ 
+                                events[i].date=newEv.date; 
+                                updated++; 
+                            }
+                            if((posterUrl && !events[i].poster) || (tmdbUrl && !events[i].tmdbUrl)){ 
+                                events[i].poster=posterUrl; events[i].tmdbUrl=tmdbUrl; 
+                                enriched++; 
+                            }
+                        }
+                    });
+                }
+
+                saveEvents(); generateCalendar();
+                notify(`✅ « ${title} » importée (+${added}, ✏️${updated}, 🧩${enriched})`);
+            }catch(err){ 
+                console.error(err); 
+                notify("Impossible de charger depuis TMDB","error"); 
+            }
+        }
+
+        /* ========================================================== */
+        /* INITIALISATION                       */
+        /* ========================================================== */
+
+        document.getElementById("prevBtn").onclick=()=>{if(viewMode==="month")currentDate.setMonth(currentDate.getMonth()-1);else currentDate.setDate(currentDate.getDate()-7);generateCalendar();};
+        document.getElementById("nextBtn").onclick=()=>{if(viewMode==="month")currentDate.setMonth(currentDate.getMonth()+1);else currentDate.setDate(currentDate.getDate()+7);generateCalendar();};
+        toggleViewBtn.onclick=()=>{viewMode=viewMode==="month"?"week":"month";toggleViewBtn.textContent=viewMode==="month"?"Basculer en mode Semaine":"Basculer en mode Mois";generateCalendar();};
+        window.addEventListener("scroll",()=>{document.getElementById("topbar").classList.toggle("scrolled",window.scrollY>10);});
+
+        generateCalendar();
+    </script>
+</body>
+</html>
