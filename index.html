@@ -111,9 +111,6 @@
         </div>
         
         <div class="extra-controls" style="display:flex; gap: 10px; flex-wrap: wrap;">
-            <button id="exportBtn" class="btn-secondary">⬇️ Exporter (Sauvegarde)</button>
-            <input type="file" id="importFile" accept=".json" hidden />
-            <button id="importBtn" class="btn-secondary">⬆️ Importer (Restaurer)</button>
             <button id="deleteSeriesBtn" class="btn-secondary" style="display:none;">🗑 Supprimer Série</button>
             <button id="renameSeriesBtn" class="btn-secondary" style="display:none;">✏️ Renommer Série</button>
         </div>
@@ -136,7 +133,8 @@
         /* ========================================================== */
         /* CONFIGURATION                         */
         /* ========================================================== */
-        const TMDB_API_KEY_DEFAULT = "⚠️_TA_CLE_V3_ICI_⚠️"; // Optionnel: remplace ici
+        // IMPORTANT: Gardez ceci comme un avertissement pour la sécurité de votre clé
+        const TMDB_API_KEY_DEFAULT = "⚠️_TA_CLE_V3_ICI_⚠️";
         const tmdbKeyInput = document.getElementById("tmdbKeyInput");
         const saveKeyBtn = document.getElementById("saveKeyBtn");
 
@@ -155,19 +153,20 @@
             const k = tmdbKeyInput.value.trim();
             if (!k) { notify("Entre une clé TMDB v3 valide", "error"); return; }
             setApiKey(k);
-            notify("🔑 Clé TMDB enregistrée");
+            notify("🔑 Clé TMDB enregistrée (seulement dans ton navigateur)");
         });
 
         /* ========================================================== */
-        /* DONNÉES                            */
+        /* DONNÉES ET SAUVEGARDE SILENCIEUSE         */
         /* ========================================================== */
+        // Les données sont chargées et sauvegardées uniquement dans le localStorage.
         let events = JSON.parse(localStorage.getItem("events")) || [];
         let viewMode = "month", currentDate = new Date();
         let currentSeriesTitle = null;
         
-        // Fonction de sauvegarde SILENCIEUSE dans le localStorage du navigateur (non liée à un téléchargement)
         function saveEvents() {
             localStorage.setItem("events", JSON.stringify(events));
+            // Sauvegarde automatique et silencieuse effectuée !
         }
 
 
@@ -218,7 +217,6 @@
             const monthName = monday.toLocaleString("fr-FR", { month: "long" });
             const yearNum = monday.getFullYear();
             
-            // Calcul du dernier jour de la semaine
             const sunday = new Date(monday);
             sunday.setDate(monday.getDate() + 6);
             
@@ -352,31 +350,6 @@
             }
         });
         
-        /* ========================================================== */
-        /* EXPORT / IMPORT (Manuel)                 */
-        /* ========================================================== */
-        
-        document.getElementById("exportBtn").addEventListener("click",()=>{
-            // Fonction d'exportation manuelle (déclenche un téléchargement unique)
-            const jsonContent = JSON.stringify(events,null,2);
-            const blob=new Blob([jsonContent],{type:"application/json"});
-            const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="calendar_events_manual_export.json"; a.click();
-            URL.revokeObjectURL(a.href);
-            notify("Sauvegarde manuelle exportée (Fichier téléchargé)");
-        });
-        document.getElementById("importBtn").addEventListener("click",()=>document.getElementById("importFile").click());
-        document.getElementById("importFile").addEventListener("change",(e)=>{
-            // Fonction d'importation manuelle
-            const f=e.target.files[0]; if(!f) return;
-            const r=new FileReader();
-            r.onload=(ev)=>{ try{
-                const imp=JSON.parse(ev.target.result);
-                if(Array.isArray(imp)){ events=imp; saveEvents(); generateCalendar(); notify("Import réussi ✅"); }
-                else notify("JSON invalide","error");
-            }catch{ notify("Erreur import fichier","error"); } };
-            r.readAsText(f);
-        });
-
         /* ========================================================== */
         /* TMDB                              */
         /* ========================================================== */
