@@ -1,449 +1,935 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<meta charset="UTF-8" />
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Calendrier des Émissions</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
 <style>
-body{font-family:"Segoe UI",Roboto,Arial,sans-serif;margin:0;background:#0f0f0f;color:#eee;transition:background .3s,color .3s}
-h1{margin:0}
-#topbar{position:sticky;top:0;z-index:1000;background:inherit;padding:10px 0 15px;border-bottom:2px solid #444;display:flex;flex-direction:column;align-items:center;gap:12px}
-#topbar.scrolled{box-shadow:0 2px 10px rgba(0,0,0,.35)}
-.controls,.extra-controls{text-align:center}
-form{margin:0;display:flex;justify-content:center;align-items:center;gap:10px;flex-wrap:nowrap;max-width:980px}
-form input,form button{padding:6px 8px;font-size:14px;border:1px solid #555;border-radius:6px;background:#1e1e1e;color:#eee}
-form input::placeholder{color:#aaa}
-#date{width:140px}
-#title{flex:1 1 280px;min-width:240px}
-#season,#episode{width:160px}
-.btn-group{display:flex;gap:10px}
-.btn-primary{background:#2b77ff;border-color:#2b77ff;color:#fff}
-.btn-secondary{background:#2b2b2b;border-color:#555;color:#eee}
-#tmdbSearch{width:980px;max-width:95vw;padding:6px 8px;border:1px solid #555;border-radius:6px;background:#1e1e1e;color:#eee}
-#tmdbResults{background:#1e1e1e;color:#eee;border:1px solid #444;max-height:400px;overflow-y:auto;margin-top:4px;border-radius:6px;box-shadow:0 2px 8px rgba(0,0,0,.4);width:980px;max-width:95vw}
-#tmdbResults[hidden]{display:none}
-#tmdbResults div{padding:8px 10px;cursor:pointer;display:flex;align-items:center;gap:8px}
-#tmdbResults div:hover{background:#333}
-#tmdbResults div img{width:32px;height:auto;border-radius:3px;flex-shrink:0}
-#tmdbResults .result-info{display:flex;flex-direction:column}
-#tmdbResults .result-name{font-weight:bold}
-#tmdbResults .result-year{font-size:12px;color:#aaa}
-#tmdbResultsCount{padding:6px 10px;font-size:12px;color:#888;border-bottom:1px solid #333}
-/* Notification style */
-#notification{position:fixed;bottom:20px;right:20px;background:#2b77ff;color:#fff;padding:10px 15px;border-radius:6px;box-shadow:0 4px 12px rgba(0,0,0,.3);z-index:10000;opacity:0;transition:opacity .3s,transform .3s;transform:translateY(20px)}
-#notification.show{opacity:1;transform:translateY(0)}
-#notification.error{background:#ff4444}
-#notification.info{background:#ffaa00}
-#progressContainer {
-width: 80%;
-max-width: 600px;
-height: 18px;
-background: #333;
-border-radius: 10px;
-overflow: hidden;
-margin-top: 5px;
-display: none;
-}
-#progressBar {
-height: 100%;
-width: 0;
-background: linear-gradient(90deg, #2b77ff, #5aa8ff);
-transition: width 0.2s ease;
-}
-.calendar{display:grid;gap:8px;margin-top:10px}
-.calendar.month{grid-template-columns:repeat(7,1fr)}
-.calendar.week{grid-template-columns:repeat(7,1fr)}
-.day{border-radius:10px;background:#1b1b1b;min-height:120px;display:flex;flex-direction:column;position:relative;padding:6px;box-shadow:0 2px 6px rgba(0,0,0,.5);transition:transform .15s,box-shadow .15s,background .3s;border:1px solid #2a2a2a}
-.day:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(0,0,0,.6)}
-.day-number{font-weight:bold;font-size:16px;color:#bbb;position:absolute;top:6px;right:8px}
-.day:empty::after{content:"";display:block;flex:1}
-.day.drag-over{outline:2px dashed #2b77ff;background:#162038}
-.weekdays{font-weight:bold;text-align:center;background:#1c1c1c;border-radius:8px;overflow:hidden;display:grid;grid-template-columns:repeat(7,1fr)}
-.weekdays div{padding:10px 0;border:1px solid #2a2a2a;background:#1f1f1f;font-size:14px;color:#ddd}
-.event{background:linear-gradient(135deg,#2090ff,#5aa8ff);color:#fff;font-size:12px;margin-top:24px;padding:4px 6px;border-radius:6px;display:flex;align-items:center;gap:6px;cursor:grab;transition:transform .15s,box-shadow .15s}
-.event:active{cursor:grabbing}
-.event:hover{transform:translateY(-1px);box-shadow:0 2px 6px rgba(0,0,0,.4)}
-.event.watched{background:linear-gradient(135deg,#1e8f4a,#51c77b)}
-.event img{width:22px;height:auto;border-radius:4px;flex-shrink:0}
-.event .actions{display:flex;align-items:center;gap:6px;margin-left:auto}
-.event .actions .btn{font-size:14px;padding:0 2px;cursor:pointer}
-.event .btn.del{color:#ffd6d6}
-.event .btn.dup{color:#ffffaa}
+  :root {
+    --bg:#0d0f14;--bg2:#13161e;--bg3:#1a1e2a;--bg4:#222638;
+    --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.13);
+    --text:#e8eaf0;--text2:#8b8fa8;--text3:#555870;
+    --accent:#6c63ff;--accent2:#8b85ff;
+    --accent-bg:rgba(108,99,255,0.12);--accent-border:rgba(108,99,255,0.35);
+    --green:#3ecf8e;--green-bg:rgba(62,207,142,0.1);
+    --red:#ff6b6b;--red-bg:rgba(255,107,107,0.1);
+    --amber:#f5a623;--amber-bg:rgba(245,166,35,0.1);
+    --radius:10px;--radius-lg:16px;
+    --shadow:0 4px 24px rgba(0,0,0,0.4);
+    --font:'DM Sans',sans-serif;--mono:'DM Mono',monospace;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;line-height:1.5;}
+
+  .topbar{background:var(--bg2);border-bottom:1px solid var(--border);padding:0 32px;display:flex;align-items:center;gap:20px;height:60px;position:sticky;top:0;z-index:100;}
+  .topbar-logo{display:flex;align-items:center;gap:10px;font-size:15px;font-weight:600;letter-spacing:-0.3px;color:var(--text);white-space:nowrap;}
+  .topbar-logo .icon{width:30px;height:30px;background:var(--accent);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;}
+  .topbar-sep{width:1px;height:28px;background:var(--border);}
+  .nav-pills{display:flex;gap:4px;}
+  .nav-pill{padding:6px 14px;border-radius:8px;font-size:13px;font-weight:500;color:var(--text2);cursor:pointer;border:none;background:transparent;transition:all .15s;font-family:var(--font);}
+  .nav-pill:hover{background:var(--bg4);color:var(--text);}
+  .nav-pill.active{background:var(--accent-bg);color:var(--accent2);border:1px solid var(--accent-border);}
+  .topbar-right{margin-left:auto;display:flex;align-items:center;gap:10px;}
+  .key-row{display:flex;align-items:center;gap:8px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:5px 5px 5px 12px;}
+  .key-label{color:var(--text3);font-family:var(--mono);font-size:11px;white-space:nowrap;}
+  .key-input{background:transparent;border:none;color:var(--text);font-family:var(--mono);font-size:12px;width:150px;outline:none;}
+  .key-input::placeholder{color:var(--text3);}
+  .btn-save-key{padding:5px 12px;background:var(--accent);color:#fff;border:none;border-radius:7px;font-size:12px;font-weight:500;cursor:pointer;font-family:var(--font);transition:opacity .15s;}
+  .btn-save-key:hover{opacity:0.85;}
+
+  .main{padding:28px 32px;max-width:1400px;margin:0 auto;}
+
+  .toolbar{display:flex;align-items:center;gap:10px;margin-bottom:24px;flex-wrap:wrap;}
+  .month-nav{display:flex;align-items:center;gap:2px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:4px;}
+  .month-nav button{width:30px;height:30px;border:none;background:transparent;color:var(--text2);border-radius:7px;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;transition:all .15s;font-family:var(--font);}
+  .month-nav button:hover{background:var(--bg4);color:var(--text);}
+  .month-nav .month-label{padding:0 14px;font-size:14px;font-weight:600;color:var(--text);min-width:130px;text-align:center;letter-spacing:-0.2px;text-transform:capitalize;}
+  .toolbar-right{margin-left:auto;display:flex;gap:8px;}
+  .btn-icon{display:flex;align-items:center;gap:6px;padding:7px 13px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text2);font-size:12px;font-weight:500;cursor:pointer;transition:all .15s;font-family:var(--font);}
+  .btn-icon:hover{border-color:var(--border2);color:var(--text);background:var(--bg4);}
+  .btn-refresh{border-color:rgba(62,207,142,0.3);color:var(--green);}
+  .btn-refresh:hover{background:var(--green-bg);border-color:rgba(62,207,142,0.5);color:var(--green);}
+
+  .search-section{margin-bottom:20px;}
+  .search-toggle-row{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+  .search-toggle-row span{font-size:12px;color:var(--text3);}
+  .search-bar{position:relative;}
+  .search-bar input{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:11px 16px 11px 42px;color:var(--text);font-family:var(--font);font-size:14px;outline:none;transition:border-color .2s;}
+  .search-bar input:focus{border-color:var(--accent-border);}
+  .search-bar input::placeholder{color:var(--text3);}
+  .search-icon{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--text3);font-size:15px;pointer-events:none;}
+  .search-results{position:absolute;top:calc(100% + 6px);left:0;right:0;background:var(--bg3);border:1px solid var(--border2);border-radius:12px;overflow:hidden;z-index:50;box-shadow:var(--shadow);display:none;}
+  .search-result-item{display:flex;align-items:center;gap:12px;padding:10px 14px;cursor:pointer;transition:background .12s;border-bottom:1px solid var(--border);}
+  .search-result-item:last-child{border-bottom:none;}
+  .search-result-item:hover{background:var(--bg4);}
+  .search-result-item img{width:36px;height:54px;object-fit:cover;border-radius:5px;background:var(--bg4);}
+  .no-img{width:36px;height:54px;background:var(--bg4);border-radius:5px;display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:18px;}
+  .result-title{font-size:13px;font-weight:500;color:var(--text);}
+  .result-year{font-size:11px;color:var(--text3);margin-top:2px;}
+
+  .add-form{display:flex;gap:8px;margin-bottom:28px;background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:14px;flex-wrap:wrap;align-items:flex-end;}
+  .form-group{display:flex;flex-direction:column;gap:5px;}
+  .form-group label{font-size:11px;color:var(--text3);font-weight:500;letter-spacing:0.5px;text-transform:uppercase;}
+  .form-input{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:8px 12px;color:var(--text);font-family:var(--font);font-size:13px;outline:none;transition:border-color .15s;}
+  .form-input:focus{border-color:var(--accent-border);}
+  .form-input::placeholder{color:var(--text3);}
+  .fg-date input{width:140px;}.fg-time input{width:90px;}
+  .fg-season input,.fg-ep input{width:90px;}
+  .form-actions{display:flex;gap:8px;align-items:flex-end;margin-left:auto;}
+  .btn-primary{padding:9px 20px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;font-family:var(--font);transition:opacity .15s,transform .1s;}
+  .btn-primary:hover{opacity:0.88;}.btn-primary:active{transform:scale(0.97);}
+  .btn-cancel{padding:9px 16px;background:transparent;color:var(--text2);border:1px solid var(--border);border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;font-family:var(--font);transition:all .15s;}
+  .btn-cancel:hover{background:var(--bg4);color:var(--text);}
+
+  .cal-header{display:grid;grid-template-columns:repeat(7,1fr);gap:1px;margin-bottom:2px;}
+  .cal-dow{text-align:center;font-size:11px;font-weight:500;color:var(--text3);letter-spacing:0.8px;text-transform:uppercase;padding:10px 0;}
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;background:var(--border);border-radius:var(--radius-lg);overflow:hidden;}
+  .cal-cell{background:var(--bg2);min-height:110px;padding:10px;cursor:pointer;transition:background .12s;position:relative;}
+  .cal-cell:hover{background:var(--bg3);}
+  .cal-cell.other-month{background:var(--bg);}
+  .cal-cell.other-month .day-num{color:var(--text3);}
+  .cal-cell.today{background:var(--bg3);}
+  .cal-cell.today::after{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--accent);}
+  .day-num{font-size:12px;font-weight:500;color:var(--text2);margin-bottom:6px;display:flex;align-items:center;justify-content:flex-end;}
+  .today .day-num span{background:var(--accent);color:#fff;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;}
+  .event-chip{background:var(--accent-bg);border:1px solid var(--accent-border);border-radius:6px;padding:4px 8px;margin-bottom:3px;font-size:11px;font-weight:500;color:var(--accent2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:5px;}
+  .event-chip.watched{background:rgba(62,207,142,0.12);border-color:rgba(62,207,142,0.35);color:var(--green);}
+  .event-chip.watched:hover{background:rgba(62,207,142,0.2);}
+  .event-chip.watched .chip-ep,.event-chip.watched .chip-time{color:rgba(62,207,142,0.5);}
+  .event-chip:hover{background:rgba(108,99,255,0.22);}
+  .chip-ep{font-family:var(--mono);font-size:10px;color:var(--text3);flex-shrink:0;}
+  .chip-time{font-family:var(--mono);font-size:10px;color:var(--accent);flex-shrink:0;opacity:0.8;}
+  .chip-title{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;}
+  .chip-watch-btn{flex-shrink:0;font-size:11px;opacity:0.35;transition:opacity .15s,color .15s;line-height:1;padding:0 1px;border-radius:3px;}
+  .chip-watch-btn:hover{opacity:1;}
+  .event-chip.watched .chip-watch-btn{opacity:0.9;color:var(--green);}
+  .more-chip{font-size:10px;color:var(--text3);padding:2px 6px;cursor:pointer;}
+  .more-chip:hover{color:var(--text2);}
+
+  .week-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;background:var(--border);border-radius:var(--radius-lg);overflow:hidden;}
+  .week-col{background:var(--bg2);min-height:320px;padding:14px 10px;}
+  .week-col.today{background:var(--bg3);}
+  .week-col-head{font-size:11px;font-weight:500;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;}
+  .week-col-date{font-size:22px;font-weight:600;color:var(--text);margin-bottom:12px;letter-spacing:-1px;}
+  .week-col.today .week-col-date{color:var(--accent2);}
+
+  .toast{position:fixed;bottom:28px;right:28px;background:var(--bg3);border:1px solid var(--border2);border-radius:12px;padding:12px 20px;font-size:13px;color:var(--text);box-shadow:var(--shadow);z-index:999;opacity:0;transform:translateY(10px);transition:all .25s;pointer-events:none;max-width:320px;}
+  .toast.show{opacity:1;transform:translateY(0);}
+  .toast.error{border-color:rgba(255,107,107,0.4);color:var(--red);}
+  .toast.success{border-color:rgba(62,207,142,0.4);color:var(--green);}
+
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:200;display:none;align-items:center;justify-content:center;backdrop-filter:blur(4px);}
+  .modal-overlay.open{display:flex;}
+  .modal{background:var(--bg2);border:1px solid var(--border2);border-radius:18px;padding:28px;width:460px;max-width:95vw;box-shadow:var(--shadow);animation:modalIn .2s ease;}
+  @keyframes modalIn{from{opacity:0;transform:scale(0.95) translateY(8px);}to{opacity:1;transform:scale(1) translateY(0);}}
+  .modal-title{font-size:15px;font-weight:600;margin-bottom:6px;color:var(--text);}
+  .modal-sub{font-size:12px;color:var(--text3);margin-bottom:18px;}
+  .modal-event-list{display:flex;flex-direction:column;gap:8px;max-height:360px;overflow-y:auto;}
+  .modal-event{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px 14px;display:flex;align-items:center;gap:12px;}
+  .modal-event-info{flex:1;}
+  .modal-event-title{font-size:13px;font-weight:500;color:var(--text);}
+  .modal-event-sub{font-size:11px;color:var(--text3);font-family:var(--mono);margin-top:3px;display:flex;gap:10px;flex-wrap:wrap;}
+  .modal-event-actions{display:flex;gap:6px;flex-shrink:0;}
+  .modal-event-del,.modal-event-recur{width:28px;height:28px;border-radius:7px;border:1px solid var(--border);background:transparent;color:var(--text3);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;transition:all .15s;}
+  .modal-event-del:hover{background:var(--red-bg);border-color:rgba(255,107,107,0.4);color:var(--red);}
+  .modal-event-recur:hover{background:var(--amber-bg);border-color:rgba(245,166,35,0.4);color:var(--amber);}
+  .modal-footer{margin-top:18px;display:flex;gap:8px;}
+  .modal-close{flex:1;padding:10px;background:var(--bg3);border:1px solid var(--border);border-radius:9px;color:var(--text2);font-size:13px;font-weight:500;cursor:pointer;font-family:var(--font);transition:all .15s;}
+  .modal-close:hover{background:var(--bg4);color:var(--text);}
+
+  .tmdb-ep-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;border:1px solid var(--border);background:var(--bg3);margin-bottom:6px;}
+  .tmdb-ep-item label{flex:1;font-size:13px;color:var(--text);cursor:pointer;display:flex;flex-direction:column;gap:2px;}
+  .tmdb-ep-item label small{font-size:11px;color:var(--text3);font-family:var(--mono);}
+  .tmdb-ep-item input[type=checkbox]{accent-color:var(--accent);width:15px;height:15px;flex-shrink:0;}
+  .tmdb-ep-item.already{opacity:0.38;}
+  .select-all-row{display:flex;align-items:center;gap:8px;margin-bottom:12px;font-size:12px;color:var(--text2);}
+  .select-all-row input{accent-color:var(--accent);width:14px;height:14px;}
+
+  .recur-form{display:flex;flex-direction:column;gap:14px;}
+  .recur-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+  .recur-label{font-size:12px;color:var(--text3);min-width:80px;}
+  .recur-select,.recur-input{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:7px 10px;color:var(--text);font-family:var(--font);font-size:13px;outline:none;}
+  .recur-input{width:80px;}
+  .recur-preview{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px 14px;font-size:12px;color:var(--text2);max-height:140px;overflow-y:auto;}
+  .recur-preview div{padding:3px 0;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;}
+  .recur-preview div:last-child{border-bottom:none;}
+  .btn-green{padding:9px 20px;background:var(--green);color:#0d2a1e;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font);transition:opacity .15s;}
+  .btn-green:hover{opacity:0.88;}
+
+  input[type="file"]{display:none;}
+  ::-webkit-scrollbar{width:6px;height:6px;}
+  ::-webkit-scrollbar-track{background:transparent;}
+  ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:99px;}
+
+  @media(max-width:700px){
+    .main{padding:16px;}.topbar{padding:0 16px;gap:12px;}
+    .add-form{flex-direction:column;}.form-actions{margin-left:0;}
+    .key-input{width:100px;}
+  }
 </style>
 </head>
 <body>
-<div id="topbar">
-<h1>📅 Calendrier des Émissions</h1>
-<div class="controls">
-<button id="prevBtn">◀</button>
-<span id="monthLabel"></span>
-<button id="nextBtn">▶</button>
-<button id="toggleViewBtn">Basculer en mode Semaine</button>
+
+<div class="topbar">
+  <div class="topbar-logo"><div class="icon">📺</div>Calendrier des Émissions</div>
+  <div class="topbar-sep"></div>
+  <div class="nav-pills">
+    <button class="nav-pill active" id="btnMonth" onclick="setView('month')">Mois</button>
+    <button class="nav-pill" id="btnWeek" onclick="setView('week')">Semaine</button>
+  </div>
+  <div class="topbar-right">
+    <div class="key-row">
+      <span class="key-label">TMDB v3</span>
+      <input class="key-input" id="tmdbKeyInput" type="password" placeholder="Clé API…"/>
+      <button class="btn-save-key" id="saveKeyBtn">Enregistrer</button>
+    </div>
+  </div>
 </div>
-<div class="extra-controls">
-<label for="tmdbKeyInput">Clé TMDB (v3) :</label>
-<input id="tmdbKeyInput" type="text" placeholder="Ex: 123abc456def..." />
-<button id="saveKeyBtn" class="btn-secondary">Enregistrer la clé</button>
+
+<div class="main">
+  <div class="toolbar">
+    <div class="month-nav">
+      <button onclick="navigate(-1)">&#8249;</button>
+      <span class="month-label" id="monthLabel"></span>
+      <button onclick="navigate(1)">&#8250;</button>
+    </div>
+    <button class="btn-icon" onclick="goToday()">Aujourd'hui</button>
+    <button class="btn-icon btn-refresh" id="refreshBtn">&#8635; Rafraîchir TMDB</button>
+    <div class="toolbar-right">
+      <button class="btn-icon" id="exportBtn">&#8659; Exporter</button>
+      <button class="btn-icon" id="importBtn">&#8657; Importer</button>
+      <input type="file" id="importFile" accept=".json"/>
+    </div>
+  </div>
+
+  <div class="search-section">
+    <div class="search-toggle-row">
+      <span>Recherche TMDB (optionnel)</span>
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+        <input type="checkbox" id="tmdbToggle" checked style="accent-color:var(--accent);width:14px;height:14px;"/>
+        <span style="font-size:12px;color:var(--text2);">Activer</span>
+      </label>
+    </div>
+    <div class="search-bar" id="searchBarWrap">
+      <span class="search-icon">&#128269;</span>
+      <input type="text" id="tmdbSearch" placeholder="Rechercher une série sur TMDB…"/>
+      <div class="search-results" id="searchResults"></div>
+    </div>
+  </div>
+
+  <div class="add-form">
+    <div class="form-group fg-date">
+      <label>Date</label>
+      <input class="form-input" type="date" id="eventDate"/>
+    </div>
+    <div class="form-group fg-time">
+      <label>Heure</label>
+      <input class="form-input" type="time" id="eventTime"/>
+    </div>
+    <div class="form-group" style="flex:1;min-width:160px;">
+      <label>Titre de l'émission</label>
+      <input class="form-input" type="text" id="eventTitle" placeholder="Ex: Breaking Bad"/>
+    </div>
+    <div class="form-group fg-season">
+      <label>Saison</label>
+      <input class="form-input" type="text" id="eventSeason" placeholder="S01"/>
+    </div>
+    <div class="form-group fg-ep">
+      <label>Épisode</label>
+      <input class="form-input" type="text" id="eventEp" placeholder="E01"/>
+    </div>
+    <div class="form-group" style="min-width:180px;">
+      <label>Fichier .bat (optionnel)</label>
+      <input class="form-input" type="text" id="eventBat" placeholder="4SURVIVOR.720.noovo.bat"/>
+    </div>
+    <div class="form-actions">
+      <button class="btn-primary" id="saveBtn">Enregistrer</button>
+      <button class="btn-cancel" id="cancelBtn">Annuler</button>
+    </div>
+  </div>
+
+  <div id="calendarWrap"></div>
 </div>
-<form id="addForm">
-<input type="hidden" id="editIndex" />
-<input type="date" id="date" required />
-<input type="text" id="title" placeholder="Titre de l'émission" required />
-<input type="text" id="season" placeholder="Saison (ex: S01 ou 1)" required />
-<input type="text" id="episode" placeholder="Épisode (ex: E01 ou 1)" required />
-<div class="btn-group">
-<button type="submit" class="btn-primary">Enregistrer</button>
-<button type="button" id="resetBtn" class="btn-secondary">Annuler</button>
+
+<!-- MODAL: day events -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <div class="modal-title" id="modalTitle"></div>
+    <div class="modal-sub" id="modalSub"></div>
+    <div class="modal-event-list" id="modalList"></div>
+    <div class="modal-footer">
+      <button class="modal-close" onclick="closeModal()">Fermer</button>
+    </div>
+  </div>
 </div>
-</form>
-<div class="extra-controls">
-<input type="text" id="tmdbSearch" placeholder="Rechercher une série sur TMDB..." autocomplete="off" />
-<div id="tmdbResults" hidden></div>
+
+<!-- MODAL: TMDB import -->
+<div class="modal-overlay" id="tmdbImportOverlay">
+  <div class="modal" style="width:520px;">
+    <div class="modal-title" id="tmdbImportTitle"></div>
+    <div class="modal-sub" id="tmdbImportSub"></div>
+    <div class="select-all-row">
+      <input type="checkbox" id="selectAllEps" onchange="toggleAllEps(this.checked)"/>
+      <label for="selectAllEps" style="cursor:pointer;">Tout sélectionner / désélectionner</label>
+      <span id="epSelCount" style="margin-left:auto;color:var(--text3);font-size:11px;"></span>
+    </div>
+    <div class="modal-event-list" id="tmdbEpList"></div>
+    <div class="modal-footer">
+      <button class="modal-close" onclick="closeTmdbImport()">Annuler</button>
+      <button class="btn-primary" onclick="confirmTmdbImport()">Ajouter la sélection</button>
+    </div>
+  </div>
 </div>
-<div class="extra-controls" style="display:flex; gap: 10px; flex-wrap: wrap;">
-<button id="exportBtn" class="btn-secondary">⬇️ Exporter (Sauvegarde)</button>
-<input type="file" id="importFile" accept=".json" hidden />
-<button id="importBtn" class="btn-secondary">⬆️ Importer (Restaurer)</button>
-<button id="deleteSeriesBtn" class="btn-secondary" style="display:none;">🗑 Supprimer Série</button>
-<button id="renameSeriesBtn" class="btn-secondary" style="display:none;">✏️ Renommer Série</button>
+
+<!-- MODAL: recurrence -->
+<div class="modal-overlay" id="recurOverlay">
+  <div class="modal" style="width:500px;">
+    <div class="modal-title">Ajouter une récurrence</div>
+    <div class="modal-sub" id="recurSub"></div>
+    <div class="recur-form">
+      <div class="recur-row">
+        <span class="recur-label">Répéter tous les</span>
+        <select class="recur-select" id="recurFreq">
+          <option value="7">7 jours (hebdomadaire)</option>
+          <option value="1">1 jour</option>
+          <option value="2">2 jours</option>
+          <option value="14">14 jours (bi-mensuel)</option>
+        </select>
+      </div>
+      <div class="recur-row">
+        <span class="recur-label">Occurrences</span>
+        <input type="number" class="recur-input" id="recurCount" value="5" min="1" max="52"/>
+      </div>
+      <div class="recur-row">
+        <span class="recur-label">Incrémenter épisode</span>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;color:var(--text2);">
+          <input type="checkbox" id="recurIncrEp" checked style="accent-color:var(--accent);width:14px;height:14px;"/>
+          automatiquement (+1 par occurrence)
+        </label>
+      </div>
+      <div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px;">Aperçu</div>
+        <div class="recur-preview" id="recurPreview"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-close" onclick="closeRecur()">Annuler</button>
+      <button class="btn-green" onclick="confirmRecur()">Créer les occurrences</button>
+    </div>
+  </div>
 </div>
-<div id="progressContainer">
-<div id="progressBar"></div>
+
+<div class="toast" id="toast"></div>
+
+<!-- MODAL: edit episode -->
+<div class="modal-overlay" id="editOverlay">
+  <div class="modal" style="width:480px;">
+    <div class="modal-title">Modifier l'épisode</div>
+    <div class="modal-sub">Modifie les informations et assigne un fichier .bat</div>
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      <div class="form-group">
+        <label>Titre</label>
+        <input class="form-input" type="text" id="editTitle" style="width:100%;"/>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <div class="form-group">
+          <label>Date</label>
+          <input class="form-input" type="date" id="editDate"/>
+        </div>
+        <div class="form-group">
+          <label>Heure</label>
+          <input class="form-input" type="time" id="editTime"/>
+        </div>
+        <div class="form-group">
+          <label>Saison</label>
+          <input class="form-input" type="text" id="editSeason" style="width:80px;" placeholder="S01"/>
+        </div>
+        <div class="form-group">
+          <label>Épisode</label>
+          <input class="form-input" type="text" id="editEp" style="width:80px;" placeholder="E01"/>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Fichier .bat (H:\STREAM\VT\)</label>
+        <input class="form-input" type="text" id="editBat" style="width:100%;" placeholder="4SURVIVOR.720.noovo.bat"/>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-close" onclick="closeEdit()">Annuler</button>
+      <button class="btn-primary" id="editSaveBtn">Enregistrer</button>
+    </div>
+  </div>
 </div>
-</div>
-<main>
-<div class="calendar weekdays">
-<div>Lun</div><div>Mar</div><div>Mer</div><div>Jeu</div><div>Ven</div><div>Sam</div><div>Dim</div>
-</div>
-<div id="calendar" class="calendar month"></div>
-</main>
-<div id="notification"></div>
+
 <script>
-/* ========================================================== */
-/* CONFIGURATION */
-/* ========================================================== */
-const TMDB_API_KEY_DEFAULT = "⚠️_TA_CLE_V3_ICI_⚠️";
-const tmdbKeyInput = document.getElementById("tmdbKeyInput");
-const saveKeyBtn = document.getElementById("saveKeyBtn");
-function getApiKey() {
-return localStorage.getItem("tmdb_api_key") || TMDB_API_KEY_DEFAULT;
+const TMDB_BASE = "https://api.themoviedb.org/3";
+const JSONBIN_KEY = "$2a$10$DoTP2KimdkN.5zG8Zks3aucgkTSqQDhqRFA1Bv5hecxE7cDnd4wla";
+const JSONBIN_BIN = "69dd6c86aaba882197f68cc1";
+const JSONBIN_URL = `https://api.jsonbin.io/v3/b/${JSONBIN_BIN}`;
+
+let events = [];
+let viewMode = "month";
+let currentDate = new Date();
+let selectedTmdbId = null;
+let selectedTmdbName = null;
+let recurSourceEvent = null;
+let tmdbImportPendingEps = [];
+let saveDebounce = null;
+
+async function loadEvents() {
+  try {
+    const res = await fetch(JSONBIN_URL+"/latest", {
+      headers: {"X-Master-Key": JSONBIN_KEY, "X-Bin-Meta": "false"}
+    });
+    const data = await res.json();
+    events = data.events || (Array.isArray(data) ? data : []);
+    generateCalendar();
+    setStatus("sync");
+  } catch(e) {
+    events = JSON.parse(localStorage.getItem("cal_events_v3")) || [];
+    generateCalendar();
+    setStatus("offline");
+  }
 }
-function setApiKey(k) {
-localStorage.setItem("tmdb_api_key", k);
+
+function setStatus(state) {
+  const el = document.getElementById("syncStatus");
+  if (!el) return;
+  if (state==="saving") { el.textContent="&#9679; Sauvegarde…"; el.style.color="var(--amber)"; }
+  else if (state==="sync") { el.textContent="&#10003; Synchronisé"; el.style.color="var(--green)"; }
+  else if (state==="offline") { el.textContent="&#9888; Hors ligne (local)"; el.style.color="var(--amber)"; }
+  else if (state==="error") { el.textContent="&#10005; Erreur de sauvegarde"; el.style.color="var(--red)"; }
 }
-(function initApiKeyUI(){
-const k = localStorage.getItem("tmdb_api_key") || TMDB_API_KEY_DEFAULT;
-tmdbKeyInput.value = k.includes("⚠️") ? "" : k;
-})();
-saveKeyBtn.addEventListener("click", () => {
-const k = tmdbKeyInput.value.trim();
-if (!k) { notify("Entre une clé TMDB v3 valide", "error"); return; }
-setApiKey(k);
-notify("🔑 Clé TMDB enregistrée");
-});
-/* ========================================================== */
-/* DONNÉES */
-/* ========================================================== */
-let events = JSON.parse(localStorage.getItem("events")) || [];
-let viewMode = "month", currentDate = new Date();
-let currentSeriesTitle = null;
+
 function saveEvents() {
-localStorage.setItem("events", JSON.stringify(events));
+  events.sort((a,b) => {
+    if (a.date !== b.date) return a.date.localeCompare(b.date);
+    return (a.time||"99:99").localeCompare(b.time||"99:99");
+  });
+  localStorage.setItem("cal_events_v3", JSON.stringify(events));
+  setStatus("saving");
+  clearTimeout(saveDebounce);
+  saveDebounce = setTimeout(async () => {
+    try {
+      await fetch(JSONBIN_URL, {
+        method: "PUT",
+        headers: {"Content-Type":"application/json","X-Master-Key": JSONBIN_KEY},
+        body: JSON.stringify({events})
+      });
+      setStatus("sync");
+    } catch { setStatus("error"); }
+  }, 800);
 }
-function notify(msg, type="success"){
-const n=document.getElementById("notification");
-n.className=""; n.textContent=msg;
-if(type==="error") n.classList.add("error");
-if(type==="info") n.classList.add("info");
-n.classList.add("show");
-setTimeout(()=>n.classList.remove("show"), 2000);
-}
-/* ========================================================== */
-/* CALENDRIER */
-/* ========================================================== */
-const cal = document.getElementById("calendar");
-const monthLabel = document.getElementById("monthLabel");
-const toggleViewBtn = document.getElementById("toggleViewBtn");
-const dateInput = document.getElementById("date");
-const titleInput = document.getElementById("title");
-const seasonInput = document.getElementById("season");
-const episodeInput = document.getElementById("episode");
-const editIndexInput = document.getElementById("editIndex");
-function generateCalendar(){
-cal.innerHTML="";
-if(viewMode==="month") generateMonth(currentDate);
-else generateWeek(currentDate);
-}
-function generateMonth(date){
-cal.className="calendar month";
-const y=date.getFullYear(), m=date.getMonth();
-monthLabel.textContent=date.toLocaleString("fr-FR",{month:"long",year:"numeric"});
-const first=new Date(y,m,1), last=new Date(y,m+1,0);
-const start=(first.getDay()+6)%7, days=last.getDate();
-for(let i=0;i<start;i++){const empty=document.createElement("div");empty.className="day";cal.appendChild(empty);}
-for(let d=1;d<=days;d++){const ds=`${y}-${String(m+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;cal.appendChild(renderDay(ds,d));}
-}
-function generateWeek(date){
-cal.className="calendar week";
-const y=date.getFullYear(),m=date.getMonth(),d=date.getDate();
-const cur=new Date(y,m,d), monday=new Date(cur);
-monday.setDate(d-((cur.getDay()+6)%7));
-const monthName = monday.toLocaleString("fr-FR", { month: "long" });
-const yearNum = monday.getFullYear();
-const sunday = new Date(monday);
-sunday.setDate(monday.getDate() + 6);
-monthLabel.textContent=`Semaine du ${monday.getDate()} ${monthName} ${yearNum}`;
-for(let i=0;i<7;i++){
-const dd=new Date(monday); dd.setDate(monday.getDate()+i);
-const ds=`${dd.getFullYear()}-${String(dd.getMonth()+1).padStart(2,"0")}-${String(dd.getDate()).padStart(2,"0")}`;
-cal.appendChild(renderDay(ds,dd.getDate()));
-}
-}
-function renderDay(dateStr,dnum){
-const day=document.createElement("div");
-day.className="day";
-day.dataset.date=dateStr;
-day.addEventListener("click",(e)=>{ if(!e.target.closest(".event")) dateInput.value=dateStr; });
-day.addEventListener("dragover",e=>{e.preventDefault(); day.classList.add("drag-over");});
-day.addEventListener("dragleave",()=>day.classList.remove("drag-over"));
-day.addEventListener("drop",e=>{
-e.preventDefault(); day.classList.remove("drag-over");
-const idx=e.dataTransfer.getData("text/plain");
-if(idx){events[idx].date=dateStr; saveEvents(); generateCalendar();}
-});
-const num=document.createElement("div"); num.className="day-number"; num.textContent=dnum; day.appendChild(num);
-events.forEach((ev,idx)=>{
-if(ev.date!==dateStr) return;
-const item=document.createElement("div"); item.className="event"; if(ev.watched)item.classList.add("watched");
-item.draggable=true; item.addEventListener("dragstart",e=>{e.dataTransfer.setData("text/plain",idx);});
-if(ev.poster){const a=document.createElement("a"); a.href=ev.tmdbUrl||"#"; a.target="_blank"; const img=document.createElement("img"); img.src=ev.poster; a.appendChild(img); item.appendChild(a);}
-const label=document.createElement("span"); label.textContent=`${ev.title} - ${ev.season}${ev.episode}`;
-const actions=document.createElement("div"); actions.className="actions";
-const chk=document.createElement("input"); chk.type="checkbox"; chk.checked=ev.watched;
-chk.addEventListener("change",()=>{ev.watched=chk.checked; saveEvents(); generateCalendar();});
-const dup=document.createElement("span"); dup.className="btn dup"; dup.textContent="📑";
-dup.addEventListener("click",(e)=>{e.stopPropagation(); events.push({...ev}); saveEvents(); generateCalendar(); notify("Épisode dupliqué");});
-const del=document.createElement("span"); del.className="btn del"; del.textContent="❌";
-del.addEventListener("click",(e)=>{
-e.stopPropagation();
-if(confirm("Supprimer cet épisode ?")){
-events.splice(idx,1); saveEvents(); generateCalendar(); notify("Épisode supprimé");
-}
-});
-actions.append(chk,dup,del);
-item.append(label,actions);
-item.addEventListener("click",(e)=>{
-if([chk,dup,del].includes(e.target) || e.target.closest("a")) return;
-editIndexInput.value=idx;
-dateInput.value=ev.date;
-titleInput.value=ev.title;
-seasonInput.value=ev.season;
-episodeInput.value=ev.episode;
-currentSeriesTitle=ev.title;
-document.getElementById("deleteSeriesBtn").style.display="inline-block";
-document.getElementById("renameSeriesBtn").style.display="inline-block";
-episodeInput.focus();
-});
-day.appendChild(item);
-});
-return day;
-}
-/* ========================================================== */
-/* FORMULAIRE */
-/* ========================================================== */
-document.getElementById("addForm").addEventListener("submit",(e)=>{
-e.preventDefault();
-const idx=editIndexInput.value;
-const payload={date:dateInput.value,title:titleInput.value,season:seasonInput.value.trim(),episode:episodeInput.value.trim()};
-if(!payload.date||!payload.title||!payload.season||!payload.episode) return;
-if(idx!==""){
-events[idx] = { ...events[idx], ...payload };
-}
-else{
-events.push({...payload,watched:false});
-}
-saveEvents(); editIndexInput.value=""; e.target.reset(); dateInput.value=payload.date; generateCalendar();
-notify("✅ Épisode enregistré");
-});
-document.getElementById("resetBtn").addEventListener("click",()=>{
-editIndexInput.value="";
-document.getElementById("addForm").reset();
-document.getElementById("deleteSeriesBtn").style.display="none";
-document.getElementById("renameSeriesBtn").style.display="none";
-});
-/* ========================================================== */
-/* BOUTONS SÉRIE / FILTRE */
-/* ========================================================== */
-document.getElementById("deleteSeriesBtn").addEventListener("click",()=>{
-if(!currentSeriesTitle) return;
-if(confirm(`Supprimer tous les épisodes de "${currentSeriesTitle}" ?`)){
-const before=events.length;
-events=events.filter(e=>e.title!==currentSeriesTitle);
-saveEvents(); generateCalendar();
-notify(`🗑 ${before-events.length} épisodes supprimés de "${currentSeriesTitle}"`);
-currentSeriesTitle=null;
-document.getElementById("deleteSeriesBtn").style.display="none";
-document.getElementById("renameSeriesBtn").style.display="none";
-}
-});
-document.getElementById("renameSeriesBtn").addEventListener("click",()=>{
-if(!currentSeriesTitle) return;
-const newName=prompt("Nouveau nom pour la série :", currentSeriesTitle);
-if(newName && newName.trim()!=="" && newName!==currentSeriesTitle){
-events.forEach(ev=>{ if(ev.title===currentSeriesTitle) ev.title=newName; });
-saveEvents(); generateCalendar();
-notify(`✏️ Série renommée : "${currentSeriesTitle}" → "${newName}"`);
-currentSeriesTitle=newName;
-}
-});
-/* ========================================================== */
-/* EXPORT / IMPORT (Manuel) */
-/* ========================================================== */
-document.getElementById("exportBtn").addEventListener("click",()=>{
-const jsonContent = JSON.stringify(events,null,2);
-const blob=new Blob([jsonContent],{type:"application/json"});
-const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="calendar_events_manual_export.json"; a.click();
-URL.revokeObjectURL(a.href);
-notify("Sauvegarde manuelle exportée (Fichier téléchargé)");
-});
-document.getElementById("importBtn").addEventListener("click",()=>document.getElementById("importFile").click());
-document.getElementById("importFile").addEventListener("change",(e)=>{
-const f=e.target.files[0]; if(!f) return;
-const r=new FileReader();
-r.onload=(ev)=>{ try{
-const imp=JSON.parse(ev.target.result);
-if(Array.isArray(imp)){ events=imp; saveEvents(); generateCalendar(); notify("Import réussi ✅"); }
-else notify("JSON invalide","error");
-}catch{ notify("Erreur import fichier","error"); } };
-r.readAsText(f);
-});
-/* ========================================================== */
-/* TMDB */
-/* ========================================================== */
-const tmdbSearch=document.getElementById("tmdbSearch");
-const tmdbResults=document.getElementById("tmdbResults");
-function debounce(fn, ms=350){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), ms); }; }
-document.addEventListener("click",(e)=>{ if(!tmdbResults.contains(e.target) && !tmdbSearch.contains(e.target)) tmdbResults.hidden=true; });
-document.addEventListener("keydown",(e)=>{ if(e.key==="Escape") tmdbResults.hidden=true; });
-const performSearch=debounce(async(q)=>{
-tmdbResults.innerHTML="";
-if(!q || q.length<2){ tmdbResults.hidden=true; return; }
-const key=getApiKey();
-if(!key || key.includes("⚠️")){ tmdbResults.innerHTML="<div>⚠️ Ajoute ta clé TMDB (v3) ci-dessus.</div>"; tmdbResults.hidden=false; return; }
-try{
-// Fetch page 1 ET page 2 en parallèle pour avoir plus de résultats
-const [res1, res2] = await Promise.all([
-fetch(`https://api.themoviedb.org/3/search/tv?api_key=${key}&query=${encodeURIComponent(q)}&language=fr-FR&page=1`),
-fetch(`https://api.themoviedb.org/3/search/tv?api_key=${key}&query=${encodeURIComponent(q)}&language=fr-FR&page=2`)
-]);
-const [data1, data2] = await Promise.all([res1.json(), res2.json()]);
-if(data1.status_code){ tmdbResults.innerHTML=`<div>❌ TMDB: ${data1.status_message}</div>`; tmdbResults.hidden=false; return; }
-const list1 = Array.isArray(data1.results) ? data1.results : [];
-const list2 = Array.isArray(data2.results) ? data2.results : [];
-const list = [...list1, ...list2];
-const totalResults = data1.total_results || 0;
-if(list.length===0){ tmdbResults.innerHTML=`<div>Aucun résultat pour « ${q} »</div>`; tmdbResults.hidden=false; return; }
-// Afficher le nombre de résultats
-const countDiv = document.createElement("div");
-countDiv.id = "tmdbResultsCount";
-countDiv.textContent = `${totalResults} résultat${totalResults>1?'s':''} trouvé${totalResults>1?'s':''} — affichage des ${Math.min(list.length, totalResults)} premiers`;
-tmdbResults.appendChild(countDiv);
-list.forEach(show=>{
-const year=show.first_air_date?show.first_air_date.slice(0,4):"?";
-const div=document.createElement("div");
-// Miniature poster si disponible
-if(show.poster_path){
-const img=document.createElement("img");
-img.src=`https://image.tmdb.org/t/p/w92${show.poster_path}`;
-img.loading="lazy";
-div.appendChild(img);
-} else {
-const placeholder=document.createElement("div");
-placeholder.style.cssText="width:32px;height:48px;background:#333;border-radius:3px;flex-shrink:0";
-div.appendChild(placeholder);
-}
-const info=document.createElement("div");
-info.className="result-info";
-const name=document.createElement("span");
-name.className="result-name";
-name.textContent=show.name;
-const yr=document.createElement("span");
-yr.className="result-year";
-yr.textContent=`${year}${show.origin_country&&show.origin_country.length?` · ${show.origin_country.join(", ")}`:""}`;
-info.append(name,yr);
-div.appendChild(info);
-div.addEventListener("click",()=>{
-tmdbResults.hidden=true;
-document.getElementById("title").value=show.name;
-currentSeriesTitle=show.name;
-document.getElementById("deleteSeriesBtn").style.display="inline-block";
-document.getElementById("renameSeriesBtn").style.display="inline-block";
-loadFromTMDB(show.id);
-});
-tmdbResults.appendChild(div);
-});
-tmdbResults.hidden=false;
-}catch(err){ console.error(err); tmdbResults.innerHTML="<div>❌ Erreur réseau TMDB</div>"; tmdbResults.hidden=false; }
-}, 350);
-tmdbSearch.addEventListener("input",(e)=>performSearch(e.target.value.trim()));
-async function loadFromTMDB(tvId){
-const key=getApiKey();
-if(!key || key.includes("⚠️")){ notify("Ajoute ta clé TMDB (v3) avant l'import","error"); return; }
-try{
-const res=await fetch(`https://api.themoviedb.org/3/tv/${tvId}?api_key=${key}&language=fr-FR`);
-const data=await res.json();
-if(data.status_code){ notify(`TMDB: ${data.status_message}`,"error"); return; }
-const title=data.name;
-const posterUrl = data.poster_path ? ("https://image.tmdb.org/t/p/w92"+data.poster_path) : null;
-const tmdbUrl = `https://www.themoviedb.org/tv/${tvId}`;
-let added=0, updated=0, enriched=0;
-for(const season of (data.seasons||[])){
-if(!season.season_number && season.season_number !== 0) continue;
-const resS=await fetch(`https://api.themoviedb.org/3/tv/${tvId}/season/${season.season_number}?api_key=${key}&language=fr-FR`);
-const seasonData=await resS.json();
-(seasonData.episodes||[]).forEach(ep=>{
-if(!ep.air_date) return;
-const newEv={
-date:ep.air_date,
-title,
-season:"S"+String(ep.season_number).padStart(2,"0"),
-episode:"E"+String(ep.episode_number).padStart(2,"0"),
-watched:false,
-tvId,
-poster:posterUrl,
-tmdbUrl
+
+function getApiKey() { return localStorage.getItem("tmdb_key") || ""; }
+function setApiKey(k) { localStorage.setItem("tmdb_key", k); }
+
+const storedKey = getApiKey();
+if (storedKey) document.getElementById("tmdbKeyInput").value = storedKey;
+
+document.getElementById("saveKeyBtn").onclick = () => {
+  const k = document.getElementById("tmdbKeyInput").value.trim();
+  if (!k) { notify("Entre une clé TMDB v3 valide","error"); return; }
+  setApiKey(k); notify("Clé TMDB enregistrée","success");
 };
-const i=events.findIndex(e=>e.title===newEv.title && e.season===newEv.season && e.episode===newEv.episode);
-if(i===-1){
-events.push(newEv);
-added++;
+
+function setView(v) {
+  viewMode = v;
+  document.getElementById("btnMonth").classList.toggle("active", v==="month");
+  document.getElementById("btnWeek").classList.toggle("active", v==="week");
+  generateCalendar();
 }
-else {
-if(events[i].date!==newEv.date){
-events[i].date=newEv.date;
-updated++;
+function navigate(d) {
+  if (viewMode==="month") currentDate.setMonth(currentDate.getMonth()+d);
+  else currentDate.setDate(currentDate.getDate()+d*7);
+  generateCalendar();
 }
-if((posterUrl && !events[i].poster) || (tmdbUrl && !events[i].tmdbUrl)){
-events[i].poster=posterUrl; events[i].tmdbUrl=tmdbUrl;
-enriched++;
+function goToday() { currentDate = new Date(); generateCalendar(); }
+function fmtDate(d) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
 }
+
+function chipHtml(ev, ds) {
+  const ep = [ev.season, ev.episode].filter(Boolean).join(" ");
+  const w = ev.watched ? " watched" : "";
+  const checkIcon = ev.watched ? "&#10003;" : "&#9711;";
+  const checkTitle = ev.watched ? "Marquer comme non vu" : "Marquer comme vu";
+  return `<div class="event-chip${w}" onclick="event.stopPropagation();openCell('${ds}')">
+    ${ev.time ? `<span class="chip-time">${ev.time}</span>` : ""}
+    ${ep ? `<span class="chip-ep">${ep}</span>` : ""}
+    <span class="chip-title">${escHtml(ev.title)}</span>
+    <span class="chip-watch-btn" title="${checkTitle}" onclick="event.stopPropagation();toggleWatched(${ev.id},'${ds}')">${checkIcon}</span>
+  </div>`;
 }
+
+function toggleWatched(id, ds) {
+  const ev = events.find(e=>e.id===id);
+  if (ev) { ev.watched = !ev.watched; saveEvents(); generateCalendar(); renderModalList(ds); }
+}
+
+function generateCalendar() {
+  const wrap = document.getElementById("calendarWrap");
+  const today = new Date(); today.setHours(0,0,0,0);
+
+  if (viewMode === "month") {
+    const year = currentDate.getFullYear(), month = currentDate.getMonth();
+    document.getElementById("monthLabel").textContent =
+      new Date(year,month,1).toLocaleString("fr-FR",{month:"long",year:"numeric"});
+    let dow = new Date(year,month,1).getDay();
+    dow = dow===0 ? 6 : dow-1;
+    const daysInMonth = new Date(year,month+1,0).getDate();
+    const totalCells = Math.ceil((dow+daysInMonth)/7)*7;
+    let html = `<div class="cal-header">`;
+    ["Lun","Mar","Mer","Jeu","Ven","Sam","Dim"].forEach(d => html+=`<div class="cal-dow">${d}</div>`);
+    html += `</div><div class="cal-grid">`;
+    for (let i=0; i<totalCells; i++) {
+      const cellDate = new Date(year,month,1-dow+i);
+      const isThisMonth = cellDate.getMonth()===month;
+      const isToday = cellDate.getTime()===today.getTime();
+      const ds = fmtDate(cellDate);
+      const dayEvs = events.filter(e=>e.date===ds);
+      const cls = ["cal-cell",!isThisMonth?"other-month":"",isToday?"today":""].filter(Boolean).join(" ");
+      html += `<div class="${cls}" onclick="openCell('${ds}')">`;
+      html += `<div class="day-num">${isToday?`<span>${cellDate.getDate()}</span>`:cellDate.getDate()}</div>`;
+      dayEvs.slice(0,3).forEach(ev => html+=chipHtml(ev,ds));
+      if (dayEvs.length>3) html+=`<div class="more-chip">+${dayEvs.length-3} de plus</div>`;
+      html += `</div>`;
+    }
+    html += `</div>`;
+    wrap.innerHTML = html;
+  } else {
+    const d = new Date(currentDate);
+    let dow = d.getDay(); dow = dow===0?6:dow-1;
+    d.setDate(d.getDate()-dow);
+    const weekStart=new Date(d), weekEnd=new Date(d);
+    weekEnd.setDate(weekEnd.getDate()+6);
+    const mS=weekStart.toLocaleString("fr-FR",{month:"short"});
+    const mE=weekEnd.toLocaleString("fr-FR",{month:"short"});
+    document.getElementById("monthLabel").textContent =
+      mS===mE ? `${mS} ${weekStart.getFullYear()}` : `${mS} – ${mE} ${weekStart.getFullYear()}`;
+    const days=["Lun","Mar","Mer","Jeu","Ven","Sam","Dim"];
+    let html=`<div class="week-grid">`;
+    for (let i=0;i<7;i++) {
+      const cellDate=new Date(d); cellDate.setDate(d.getDate()+i);
+      const isToday=cellDate.getTime()===today.getTime();
+      const ds=fmtDate(cellDate);
+      const dayEvs=events.filter(e=>e.date===ds);
+      html+=`<div class="week-col${isToday?" today":""}" onclick="openCell('${ds}')">`;
+      html+=`<div class="week-col-head">${days[i]}</div>`;
+      html+=`<div class="week-col-date">${cellDate.getDate()}</div>`;
+      dayEvs.forEach(ev=>html+=chipHtml(ev,ds));
+      html+=`</div>`;
+    }
+    html+=`</div>`;
+    wrap.innerHTML=html;
+  }
+}
+
+document.getElementById("eventDate").value = fmtDate(new Date());
+
+document.getElementById("saveBtn").onclick = () => {
+  const date = document.getElementById("eventDate").value;
+  const time = document.getElementById("eventTime").value;
+  const title = document.getElementById("eventTitle").value.trim();
+  const season = document.getElementById("eventSeason").value.trim();
+  const episode = document.getElementById("eventEp").value.trim();
+  const bat = document.getElementById("eventBat").value.trim();
+  if (!date||!title) { notify("Date et titre requis","error"); return; }
+  events.push({date,time,title,season,episode,bat,tmdbId:selectedTmdbId,id:Date.now()});
+  saveEvents(); generateCalendar();
+  notify("Émission ajoutée","success");
+  ["eventTitle","eventSeason","eventEp","eventTime","eventBat"].forEach(id=>document.getElementById(id).value="");
+  selectedTmdbId=null; selectedTmdbName=null;
+};
+
+document.getElementById("cancelBtn").onclick = () => {
+  ["eventTitle","eventSeason","eventEp","eventTime","eventBat"].forEach(id=>document.getElementById(id).value="");
+  selectedTmdbId=null; selectedTmdbName=null;
+  document.getElementById("searchResults").style.display="none";
+};
+
+// ---- DAY MODAL ----
+let currentModalDate=null;
+
+function openCell(ds) {
+  currentModalDate=ds;
+  document.getElementById("eventDate").value=ds;
+  const dayEvs=events.filter(e=>e.date===ds);
+  if (dayEvs.length===0) return;
+  const dt=new Date(ds+"T12:00:00");
+  document.getElementById("modalTitle").textContent=
+    dt.toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long"});
+  document.getElementById("modalSub").textContent=`${dayEvs.length} émission${dayEvs.length>1?"s":""}`;
+  renderModalList(ds);
+  document.getElementById("modalOverlay").classList.add("open");
+}
+
+function renderModalList(ds) {
+  const dayEvs=events.filter(e=>e.date===ds);
+  document.getElementById("modalList").innerHTML=dayEvs.map(ev=>{
+    const ep=[ev.season,ev.episode].filter(Boolean).join(" ");
+    const watched = ev.watched;
+    // Count how many episodes exist for this series
+    const seriesCount = events.filter(e=>e.title===ev.title).length;
+    return `<div class="modal-event" style="${watched?"border-color:rgba(62,207,142,0.3);background:rgba(62,207,142,0.06)":""}">
+      <div class="modal-event-info">
+        <div class="modal-event-title" style="${watched?"color:var(--green);text-decoration:line-through;opacity:0.7":""}">
+          ${escHtml(ev.title)}
+        </div>
+        <div class="modal-event-sub">
+          ${ev.time?`<span style="color:var(--accent2)">&#128336; ${ev.time}</span>`:""}
+          ${ep?`<span>${ep}</span>`:""}
+          ${ev.bat?`<span style="color:var(--amber);font-family:var(--mono);font-size:10px;">&#9881; ${ev.bat}</span>`:`<span style="color:var(--text3);font-size:10px;cursor:pointer;" onclick="openEdit(${ev.id},'${ds}')">+ Assigner .bat</span>`}
+          ${watched?`<span style="color:var(--green);font-weight:500;">&#10003; Vu</span>`:""}
+        </div>
+      </div>
+      <div class="modal-event-actions">
+        <button class="modal-event-recur" title="Modifier cet épisode" onclick="openEdit(${ev.id},'${ds}')" style="font-size:11px;">&#9998;</button>
+        <button class="modal-event-recur" title="${watched?"Marquer comme non vu":"Marquer comme vu"}"
+          style="${watched?"background:var(--green-bg);border-color:rgba(62,207,142,0.4);color:var(--green)":""}"
+          onclick="toggleWatched(${ev.id},'${ds}')">
+          ${watched?"&#10003;":"&#9711;"}
+        </button>
+        <button class="modal-event-recur" title="Créer une récurrence" onclick="openRecur(${ev.id})">&#8635;</button>
+        <button class="modal-event-del" title="Supprimer cet épisode" onclick="deleteEvent(${ev.id},'${ds}')">&#10005;</button>
+        ${seriesCount>1?`<button class="modal-event-del" title="Supprimer TOUTE la série (${seriesCount} ép.)" onclick="deleteSeries('${escAttr(ev.title)}','${ds}')" style="font-size:10px;width:auto;padding:0 6px;background:var(--red-bg);border-color:rgba(255,107,107,0.4);color:var(--red);">&#128465; Série</button>`:""}
+      </div>
+    </div>`;
+  }).join("");
+}
+
+function deleteEvent(id,ds) {
+  events=events.filter(e=>e.id!==id);
+  saveEvents(); generateCalendar();
+  const rem=events.filter(e=>e.date===ds);
+  if (rem.length===0){closeModal();return;}
+  renderModalList(ds);
+  document.getElementById("modalSub").textContent=`${rem.length} émission${rem.length>1?"s":""}`;
+}
+
+function deleteSeries(title, ds) {
+  const count = events.filter(e=>e.title===title).length;
+  if (!confirm(`Supprimer TOUS les ${count} épisodes de "${title}" du calendrier ?`)) return;
+  events = events.filter(e=>e.title!==title);
+  saveEvents(); generateCalendar();
+  const rem=events.filter(e=>e.date===ds);
+  if (rem.length===0){closeModal();return;}
+  renderModalList(ds);
+  document.getElementById("modalSub").textContent=`${rem.length} émission${rem.length>1?"s":""}`;
+  notify(`Série "${title}" supprimée (${count} épisodes)`,"success");
+}
+
+// ---- EDIT MODAL ----
+let editingEventId = null;
+let editingDs = null;
+
+function openEdit(id, ds) {
+  editingEventId = id;
+  editingDs = ds;
+  const ev = events.find(e=>e.id===id);
+  if (!ev) return;
+  document.getElementById("editTitle").value = ev.title||"";
+  document.getElementById("editDate").value = ev.date||"";
+  document.getElementById("editTime").value = ev.time||"";
+  document.getElementById("editSeason").value = ev.season||"";
+  document.getElementById("editEp").value = ev.episode||"";
+  document.getElementById("editBat").value = ev.bat||"";
+  document.getElementById("editOverlay").classList.add("open");
+}
+
+function closeEdit(){document.getElementById("editOverlay").classList.remove("open");}
+
+document.getElementById("editOverlay").onclick = e => {
+  if(e.target===document.getElementById("editOverlay")) closeEdit();
+};
+
+document.getElementById("editSaveBtn").onclick = () => {
+  const ev = events.find(e=>e.id===editingEventId);
+  if (!ev) return;
+  ev.title   = document.getElementById("editTitle").value.trim();
+  ev.date    = document.getElementById("editDate").value;
+  ev.time    = document.getElementById("editTime").value;
+  ev.season  = document.getElementById("editSeason").value.trim();
+  ev.episode = document.getElementById("editEp").value.trim();
+  ev.bat     = document.getElementById("editBat").value.trim();
+  saveEvents(); generateCalendar();
+  closeEdit();
+  // Re-open day modal with updated data
+  const ds = ev.date;
+  renderModalList(ds);
+  notify("Épisode mis à jour","success");
+};
+
+function closeModal(){document.getElementById("modalOverlay").classList.remove("open");}
+document.getElementById("modalOverlay").onclick=e=>{if(e.target===document.getElementById("modalOverlay"))closeModal();};
+
+// ---- TMDB TOGGLE ----
+document.getElementById("tmdbToggle").onchange=function(){
+  document.getElementById("searchBarWrap").style.display=this.checked?"block":"none";
+};
+
+// ---- TMDB SEARCH ----
+let searchTimeout;
+document.getElementById("tmdbSearch").addEventListener("input",e=>{
+  clearTimeout(searchTimeout);
+  const q=e.target.value.trim();
+  if (!q){document.getElementById("searchResults").style.display="none";return;}
+  searchTimeout=setTimeout(()=>doTmdbSearch(q),350);
 });
+
+async function doTmdbSearch(q) {
+  const key=getApiKey(), el=document.getElementById("searchResults");
+  if (!key){
+    el.innerHTML=`<div class="search-result-item"><div class="result-title" style="color:var(--amber)">Entre ta clé TMDB d'abord</div></div>`;
+    el.style.display="block";return;
+  }
+  try {
+    // Fetch pages 1 et 2 en parallèle pour avoir plus de résultats
+    const [r1,r2]=await Promise.all([
+      fetch(`${TMDB_BASE}/search/tv?api_key=${key}&query=${encodeURIComponent(q)}&language=fr-FR&page=1`),
+      fetch(`${TMDB_BASE}/search/tv?api_key=${key}&query=${encodeURIComponent(q)}&language=fr-FR&page=2`)
+    ]);
+    const [d1,d2]=await Promise.all([r1.json(),r2.json()]);
+    const results=[...(d1.results||[]),...(d2.results||[])];
+    const total=d1.total_results||0;
+    if (!results||results.length===0){
+      el.innerHTML=`<div class="search-result-item"><div class="result-title" style="color:var(--text3)">Aucun résultat</div></div>`;
+    } else {
+      const countHtml=`<div class="search-result-item" style="pointer-events:none;padding:6px 14px;"><div class="result-year">${total} résultat${total>1?"s":""} — ${results.length} affichés</div></div>`;
+      el.innerHTML=countHtml+results.map(s=>{
+        const img=s.poster_path?`https://image.tmdb.org/t/p/w92${s.poster_path}`:null;
+        const year=s.first_air_date?s.first_air_date.substring(0,4):"";
+        const countries=(s.origin_country||[]).join(", ");
+        return `<div class="search-result-item" onclick="selectSeries('${escAttr(s.name)}',${s.id})">
+          ${img?`<img src="${img}" alt=""/>`:`<div class="no-img">&#128250;</div>`}
+          <div><div class="result-title">${escHtml(s.name)}</div><div class="result-year">${[year,countries].filter(Boolean).join(" · ")}</div></div>
+        </div>`;
+      }).join("");
+    }
+    el.style.display="block";
+  } catch {
+    el.innerHTML=`<div class="search-result-item"><div class="result-title" style="color:var(--red)">Erreur réseau</div></div>`;
+    el.style.display="block";
+  }
 }
-saveEvents(); generateCalendar();
-notify(`✅ « ${title} » importée (+${added}, ✏️${updated}, 🧩${enriched})`);
-}catch(err){
-console.error(err);
-notify("Impossible de charger depuis TMDB","error");
+
+document.addEventListener("click",e=>{
+  if (!document.querySelector(".search-section").contains(e.target))
+    document.getElementById("searchResults").style.display="none";
+});
+
+async function selectSeries(name,id) {
+  document.getElementById("eventTitle").value=name;
+  selectedTmdbId=id; selectedTmdbName=name;
+  document.getElementById("tmdbSearch").value="";
+  document.getElementById("searchResults").style.display="none";
+  const key=getApiKey();
+  if (!key) return;
+  notify("Chargement des épisodes TMDB…");
+  try {
+    const res=await fetch(`${TMDB_BASE}/tv/${id}?api_key=${key}&language=fr-FR`);
+    const show=await res.json();
+    if (!show.seasons){notify("Aucune saison trouvée");return;}
+    let allEps=[];
+    for (const season of show.seasons) {
+      if (season.season_number===0) continue;
+      const sRes=await fetch(`${TMDB_BASE}/tv/${id}/season/${season.season_number}?api_key=${key}&language=fr-FR`);
+      const sData=await sRes.json();
+      if (!sData.episodes) continue;
+      for (const ep of sData.episodes) {
+        if (ep.air_date) {
+          allEps.push({
+            date:ep.air_date,title:name,
+            season:`S${String(season.season_number).padStart(2,"0")}`,
+            episode:`E${String(ep.episode_number).padStart(2,"0")}`,
+            epName:ep.name||"",tmdbId:id
+          });
+        }
+      }
+    }
+    if (allEps.length===0){notify("Aucune date de diffusion trouvée sur TMDB");return;}
+    openTmdbImport(allEps,name,id);
+  } catch{notify("Erreur lors du chargement des épisodes","error");}
 }
+
+// ---- TMDB IMPORT MODAL ----
+function openTmdbImport(eps,seriesName,seriesId) {
+  tmdbImportPendingEps=eps;
+  document.getElementById("tmdbImportTitle").textContent=seriesId?`Épisodes disponibles — ${seriesName}`:`Nouveaux épisodes sur TMDB`;
+  const existingKeys=new Set(events.map(e=>`${e.tmdbId}|${e.season}|${e.episode}`));
+  const newCount=eps.filter(ep=>{
+    const k=`${seriesId||ep.tmdbId}|${ep.season}|${ep.episode}`;
+    return !existingKeys.has(k);
+  }).length;
+  document.getElementById("tmdbImportSub").textContent=
+    `${eps.length} épisode(s) avec date de diffusion. ${newCount} nouveau(x) non encore dans le calendrier.`;
+  document.getElementById("tmdbEpList").innerHTML=eps.map((ep,i)=>{
+    const key=`${seriesId||ep.tmdbId}|${ep.season}|${ep.episode}`;
+    const already=existingKeys.has(key);
+    return `<div class="tmdb-ep-item${already?" already":""}">
+      <input type="checkbox" id="ep_${i}" data-idx="${i}" ${already?"":"checked"} ${already?"disabled":""} onchange="updateEpSelCount()"/>
+      <label for="ep_${i}">
+        ${ep.season} ${ep.episode}${ep.epName?" — "+escHtml(ep.epName):""}
+        <small>${ep.date}</small>
+      </label>
+    </div>`;
+  }).join("");
+  updateEpSelCount();
+  document.getElementById("selectAllEps").checked=true;
+  document.getElementById("tmdbImportOverlay").classList.add("open");
 }
-/* ========================================================== */
-/* INITIALISATION */
-/* ========================================================== */
-document.getElementById("prevBtn").onclick=()=>{if(viewMode==="month")currentDate.setMonth(currentDate.getMonth()-1);else currentDate.setDate(currentDate.getDate()-7);generateCalendar();};
-document.getElementById("nextBtn").onclick=()=>{if(viewMode==="month")currentDate.setMonth(currentDate.getMonth()+1);else currentDate.setDate(currentDate.getDate()+7);generateCalendar();};
-toggleViewBtn.onclick=()=>{viewMode=viewMode==="month"?"week":"month";toggleViewBtn.textContent=viewMode==="month"?"Basculer en mode Semaine":"Basculer en mode Mois";generateCalendar();};
-window.addEventListener("scroll",()=>{document.getElementById("topbar").classList.toggle("scrolled",window.scrollY>10);});
-generateCalendar();
+
+function updateEpSelCount(){
+  const n=document.querySelectorAll("#tmdbEpList input[type=checkbox]:checked:not(:disabled)").length;
+  document.getElementById("epSelCount").textContent=`${n} sélectionné(s)`;
+}
+function toggleAllEps(checked){
+  document.querySelectorAll("#tmdbEpList input[type=checkbox]:not(:disabled)").forEach(cb=>cb.checked=checked);
+  updateEpSelCount();
+}
+function closeTmdbImport(){document.getElementById("tmdbImportOverlay").classList.remove("open");}
+function confirmTmdbImport(){
+  const checked=document.querySelectorAll("#tmdbEpList input[type=checkbox]:checked:not(:disabled)");
+  let added=0;
+  checked.forEach(cb=>{
+    const ep=tmdbImportPendingEps[parseInt(cb.dataset.idx)];
+    events.push({...ep,time:"",id:Date.now()+Math.random()});
+    added++;
+  });
+  saveEvents();generateCalendar();closeTmdbImport();
+  notify(`${added} épisode(s) ajouté(s) au calendrier`,"success");
+}
+
+// ---- REFRESH TMDB ----
+document.getElementById("refreshBtn").onclick=async()=>{
+  const key=getApiKey();
+  if (!key){notify("Entre ta clé TMDB d'abord","error");return;}
+  const seriesMap={};
+  events.forEach(ev=>{if(ev.tmdbId) seriesMap[ev.tmdbId]=ev.title;});
+  const ids=Object.keys(seriesMap);
+  if (ids.length===0){notify("Aucune série TMDB dans le calendrier","error");return;}
+  notify(`Vérification de ${ids.length} série(s) sur TMDB…`);
+  const existingKeys=new Set(events.map(e=>`${e.tmdbId}|${e.season}|${e.episode}`));
+  let allNew=[];
+  try {
+    for (const id of ids) {
+      const res=await fetch(`${TMDB_BASE}/tv/${id}?api_key=${key}&language=fr-FR`);
+      const show=await res.json();
+      if (!show.seasons) continue;
+      for (const season of show.seasons) {
+        if (season.season_number===0) continue;
+        const sRes=await fetch(`${TMDB_BASE}/tv/${id}/season/${season.season_number}?api_key=${key}&language=fr-FR`);
+        const sData=await sRes.json();
+        if (!sData.episodes) continue;
+        for (const ep of sData.episodes) {
+          if (!ep.air_date) continue;
+          const s=`S${String(season.season_number).padStart(2,"0")}`;
+          const e=`E${String(ep.episode_number).padStart(2,"0")}`;
+          if (!existingKeys.has(`${id}|${s}|${e}`)) {
+            allNew.push({date:ep.air_date,title:seriesMap[id],season:s,episode:e,epName:ep.name||"",tmdbId:parseInt(id)});
+          }
+        }
+      }
+    }
+    if (allNew.length===0){notify("Aucun nouvel épisode trouvé sur TMDB","success");return;}
+    openTmdbImport(allNew,`${allNew.length} nouveaux épisodes`,null);
+  } catch{notify("Erreur lors du rafraîchissement","error");}
+};
+
+// ---- RECURRENCE MODAL ----
+function openRecur(eventId){
+  recurSourceEvent=events.find(e=>e.id===eventId);
+  if (!recurSourceEvent) return;
+  closeModal();
+  const ep=[recurSourceEvent.season,recurSourceEvent.episode].filter(Boolean).join(" ");
+  document.getElementById("recurSub").textContent=
+    `${recurSourceEvent.title}${ep?" — "+ep:""}  ·  à partir du ${recurSourceEvent.date}`;
+  updateRecurPreview();
+  document.getElementById("recurOverlay").classList.add("open");
+}
+function closeRecur(){document.getElementById("recurOverlay").classList.remove("open");}
+document.getElementById("recurOverlay").onclick=e=>{if(e.target===document.getElementById("recurOverlay"))closeRecur();};
+["recurFreq","recurCount","recurIncrEp"].forEach(id=>{
+  document.getElementById(id).addEventListener("change",updateRecurPreview);
+  document.getElementById(id).addEventListener("input",updateRecurPreview);
+});
+
+function parseNum(s){ const m=(s||"").match(/\d+/); return m?parseInt(m[0]):null; }
+function padNum(n,p){ return String(n).padStart(p,"0"); }
+
+function buildOccurrences(){
+  const freq=parseInt(document.getElementById("recurFreq").value);
+  const count=Math.min(52,Math.max(1,parseInt(document.getElementById("recurCount").value)||1));
+  const incrEp=document.getElementById("recurIncrEp").checked;
+  const src=recurSourceEvent;
+  const baseDate=new Date(src.date+"T12:00:00");
+  const baseEp=parseNum(src.episode);
+  const baseSeason=parseNum(src.season);
+  const results=[];
+  for (let i=1;i<=count;i++){
+    const d=new Date(baseDate);
+    d.setDate(d.getDate()+freq*i);
+    let newEp=src.episode, newSeason=src.season;
+    if (incrEp && baseEp!==null){
+      newEp=`E${padNum(baseEp+i,2)}`;
+    }
+    results.push({date:fmtDate(d),time:src.time||"",title:src.title,season:newSeason,episode:newEp,tmdbId:src.tmdbId||null,id:Date.now()+i+Math.random()});
+  }
+  return results;
+}
+
+function updateRecurPreview(){
+  const occs=buildOccurrences();
+  document.getElementById("recurPreview").innerHTML=occs.map(o=>{
+    const ep=[o.season,o.episode].filter(Boolean).join(" ");
+    return `<div><span>${o.date}</span><span style="color:var(--text3);font-family:var(--mono);font-size:11px;">${ep}</span></div>`;
+  }).join("");
+}
+
+function confirmRecur(){
+  const occs=buildOccurrences();
+  occs.forEach(o=>events.push(o));
+  saveEvents();generateCalendar();closeRecur();
+  notify(`${occs.length} occurrence(s) ajoutée(s)`,"success");
+}
+
+// ---- EXPORT / IMPORT ----
+document.getElementById("exportBtn").onclick=()=>{
+  const blob=new Blob([JSON.stringify(events,null,2)],{type:"application/json"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);a.download="calendrier_emissions.json";a.click();
+  URL.revokeObjectURL(a.href);
+  notify("Exporté avec succès","success");
+};
+document.getElementById("importBtn").onclick=()=>document.getElementById("importFile").click();
+document.getElementById("importFile").onchange=e=>{
+  const f=e.target.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=ev=>{
+    try{
+      const imp=JSON.parse(ev.target.result);
+      if(Array.isArray(imp)){events=imp;saveEvents();generateCalendar();notify("Import réussi","success");}
+      else notify("JSON invalide","error");
+    }catch{notify("Erreur d'import","error");}
+  };
+  r.readAsText(f);
+};
+
+// ---- TOAST ----
+let toastTimer;
+function notify(msg,type=""){
+  const t=document.getElementById("toast");
+  t.textContent=msg;
+  t.className="toast show"+(type?" "+type:"");
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>t.className="toast",3200);
+}
+
+function escHtml(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
+function escAttr(s){return String(s).replace(/'/g,"&#39;").replace(/"/g,"&quot;");}
+
+loadEvents();
 </script>
 </body>
 </html>
