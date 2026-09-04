@@ -207,13 +207,47 @@ document.getElementById("menuToggle").addEventListener("click", () => {
 });
 
 /* ========================================================== */
+/* JSONBIN SYNC */
+/* ========================================================== */
+const JSONBIN_BIN = "69dd6c86aaba882197f68cc1";
+const JSONBIN_KEY = "$2a$10$DoTP2KimdkN.5zG8Zks3aucgkTSqQDhqRFA1Bv5hecxE7cDnd4wla";
+const JSONBIN_URL = `https://api.jsonbin.io/v3/b/${JSONBIN_BIN}`;
+
+async function loadFromCloud(){
+  try{
+    const res = await fetch(JSONBIN_URL+"/latest", {
+      headers:{"X-Master-Key": JSONBIN_KEY}
+    });
+    const data = await res.json();
+    const remote = data.record?.events;
+    if(Array.isArray(remote)){
+      events = remote;
+      localStorage.setItem("events", JSON.stringify(events));
+    }
+  }catch(err){ console.error("Erreur chargement cloud:", err); }
+}
+
+async function saveToCloud(){
+  try{
+    await fetch(JSONBIN_URL, {
+      method:"PUT",
+      headers:{"Content-Type":"application/json","X-Master-Key": JSONBIN_KEY},
+      body: JSON.stringify({events})
+    });
+  }catch(err){ console.error("Erreur sauvegarde cloud:", err); }
+}
+
+/* ========================================================== */
 /* DONNÉES */
 /* ========================================================== */
 let events = JSON.parse(localStorage.getItem("events")) || [];
 let viewMode = "month", currentDate = new Date();
 let currentSeriesTitle = null;
 
-function saveEvents(){ localStorage.setItem("events", JSON.stringify(events)); }
+function saveEvents(){
+  localStorage.setItem("events", JSON.stringify(events));
+  saveToCloud();
+}
 
 function notify(msg, type="success"){
   const n=document.getElementById("notification");
@@ -523,6 +557,9 @@ toggleViewBtn.onclick=()=>{
 window.addEventListener("scroll",()=>{document.getElementById("topbar").classList.toggle("scrolled",window.scrollY>10);});
 window.addEventListener("resize",()=>generateCalendar());
 
+// Chargement initial depuis le cloud
+loadFromCloud().then(()=>generateCalendar());
+// Fallback si le cloud prend du temps
 generateCalendar();
 </script>
 </body>
