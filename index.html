@@ -219,8 +219,11 @@ async function loadFromCloud(){
       headers:{"X-Master-Key": JSONBIN_KEY}
     });
     const data = await res.json();
-    const remote = data.record?.events;
-    if(Array.isArray(remote)){
+    const record = data.record;
+    let remote = null;
+    if(Array.isArray(record)) remote = record;
+    else if(record && Array.isArray(record.events)) remote = record.events;
+    if(remote !== null){
       events = remote;
       localStorage.setItem("events", JSON.stringify(events));
     }
@@ -557,10 +560,8 @@ toggleViewBtn.onclick=()=>{
 window.addEventListener("scroll",()=>{document.getElementById("topbar").classList.toggle("scrolled",window.scrollY>10);});
 window.addEventListener("resize",()=>generateCalendar());
 
-// Chargement initial depuis le cloud
+// Chargement initial depuis le cloud, puis affichage
 loadFromCloud().then(()=>generateCalendar());
-// Fallback si le cloud prend du temps
-generateCalendar();
 </script>
 </body>
 </html>
