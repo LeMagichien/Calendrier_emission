@@ -207,37 +207,50 @@ document.getElementById("menuToggle").addEventListener("click", () => {
 });
 
 /* ========================================================== */
-/* JSONBIN SYNC */
+/* GITHUB GIST SYNC */
 /* ========================================================== */
-const JSONBIN_BIN = "69dd6c86aaba882197f68cc1";
-const JSONBIN_KEY = "$2a$10$DoTP2KimdkN.5zG8Zks3aucgkTSqQDhqRFA1Bv5hecxE7cDnd4wla";
-const JSONBIN_URL = `https://api.jsonbin.io/v3/b/${JSONBIN_BIN}`;
+const GIST_ID = "44b66da1327bc6628b20015454c3b022";
+const GIST_TOKEN = "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";
+const GIST_FILENAME = "calendrier.json";
+const GIST_URL = `https://api.github.com/gists/${GIST_ID}`;
 
 async function loadFromCloud(){
   try{
-    const res = await fetch(JSONBIN_URL+"/latest", {
-      headers:{"X-Master-Key": JSONBIN_KEY}
+    const res = await fetch(GIST_URL, {
+      headers:{"Authorization": `token ${GIST_TOKEN}`, "Accept": "application/vnd.github.v3+json"}
     });
     const data = await res.json();
-    const record = data.record;
-    let remote = null;
-    if(Array.isArray(record)) remote = record;
-    else if(record && Array.isArray(record.events)) remote = record.events;
-    if(remote !== null){
-      events = remote;
-      localStorage.setItem("events", JSON.stringify(events));
+    const raw = data.files?.[GIST_FILENAME]?.content;
+    if(raw){
+      const parsed = JSON.parse(raw);
+      const remote = Array.isArray(parsed) ? parsed : (parsed.events || null);
+      // Ne jamais écraser avec un Gist vide si on a des données locales
+      const local = JSON.parse(localStorage.getItem("events") || "[]");
+      if(remote !== null && remote.length > 0){
+        events = remote;
+        localStorage.setItem("events", JSON.stringify(events));
+      } else if(local.length > 0){
+        // Gist vide mais données locales présentes : on pousse le local vers le Gist
+        events = local;
+        saveToCloud();
+      }
     }
-  }catch(err){ console.error("Erreur chargement cloud:", err); }
+  }catch(err){
+    console.error("Erreur chargement Gist:", err);
+    // Fallback localStorage
+    const local = JSON.parse(localStorage.getItem("events") || "[]");
+    if(local.length > 0) events = local;
+  }
 }
 
 async function saveToCloud(){
   try{
-    await fetch(JSONBIN_URL, {
-      method:"PUT",
-      headers:{"Content-Type":"application/json","X-Master-Key": JSONBIN_KEY},
-      body: JSON.stringify({events})
+    await fetch(GIST_URL, {
+      method:"PATCH",
+      headers:{"Authorization": `token ${GIST_TOKEN}`, "Accept": "application/vnd.github.v3+json", "Content-Type":"application/json"},
+      body: JSON.stringify({files:{[GIST_FILENAME]:{content: JSON.stringify(events)}}})
     });
-  }catch(err){ console.error("Erreur sauvegarde cloud:", err); }
+  }catch(err){ console.error("Erreur sauvegarde Gist:", err); }
 }
 
 /* ========================================================== */
