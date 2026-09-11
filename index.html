@@ -2618,6 +2618,106 @@ form input:focus,#tmdbKeyInput:focus,#tmdbSearch:focus{
   .weekdays{display:none!important}
 }
 
+
+/* ==========================================================
+   CAPTQC V11 — AFFICHAGE DES ÉMISSIONS SUR MOBILE
+   ========================================================== */
+@media(max-width:640px){
+  .calendar.month{
+    display:flex!important;
+    flex-direction:column!important;
+    width:100%!important;
+    gap:0!important;
+  }
+
+  .calendar.month .day{
+    display:flex!important;
+    flex-direction:column!important;
+    width:100%!important;
+    min-width:0!important;
+    height:auto!important;
+    min-height:0!important;
+    overflow:visible!important;
+    padding:9px 8px 11px!important;
+    border:0!important;
+    border-bottom:1px solid rgba(198,154,80,.16)!important;
+    background:linear-gradient(90deg,rgba(28,19,13,.34),rgba(10,20,28,.42),rgba(28,19,13,.20))!important;
+  }
+
+  .calendar.month .day-label{
+    display:block!important;
+    width:100%!important;
+    margin:0 0 5px!important;
+    color:#d1ac70!important;
+    font-family:Georgia,"Times New Roman",serif!important;
+    font-size:11px!important;
+    font-weight:700!important;
+    letter-spacing:.8px!important;
+    text-transform:uppercase!important;
+  }
+
+  .calendar.month .event{
+    display:flex!important;
+    visibility:visible!important;
+    opacity:1!important;
+    position:relative!important;
+    width:100%!important;
+    max-width:none!important;
+    min-width:0!important;
+    min-height:48px!important;
+    height:auto!important;
+    margin:4px 0 0!important;
+    padding:7px 8px!important;
+    overflow:visible!important;
+    box-sizing:border-box!important;
+    flex-shrink:0!important;
+    align-items:center!important;
+    gap:7px!important;
+  }
+
+  .calendar.month .event > span:not(.btn){
+    display:block!important;
+    visibility:visible!important;
+    opacity:1!important;
+    flex:1 1 auto!important;
+    min-width:0!important;
+    width:auto!important;
+    color:#f6ead3!important;
+    white-space:normal!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+    line-height:1.25!important;
+  }
+
+  .calendar.month .event img{
+    display:block!important;
+    visibility:visible!important;
+    flex:0 0 28px!important;
+    width:28px!important;
+    height:38px!important;
+  }
+
+  .calendar.month .event .actions{
+    display:flex!important;
+    visibility:visible!important;
+    flex:0 0 auto!important;
+    margin-left:auto!important;
+  }
+
+  .mobile-empty-calendar{
+    width:100%;
+    box-sizing:border-box;
+    padding:28px 15px;
+    text-align:center;
+    color:#a48357;
+    font-family:Georgia,"Times New Roman",serif;
+    font-size:13px;
+    border:1px solid rgba(157,111,55,.20);
+    border-radius:8px;
+    background:rgba(27,20,14,.42);
+  }
+}
+
 </style>
 </head>
 <body>
@@ -2860,11 +2960,24 @@ function generateMonth(date){
   const start=(first.getDay()+6)%7, days=last.getDate();
 
   if(isMobile()){
-    // Vue agenda sur mobile : liste tous les jours du mois
+    // Vue agenda mobile : afficher uniquement les journées qui contiennent
+    // au moins une émission. Cela évite une longue liste de journées vides
+    // et garde immédiatement les émissions visibles sur iPhone/iPad.
+    let visibleDays = 0;
     for(let d=1;d<=days;d++){
       const ds=`${y}-${String(m+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+      const dayEvents = events.filter(ev => ev.date === ds);
+      if(dayEvents.length === 0) continue;
       const dd = new Date(y,m,d);
       cal.appendChild(renderDay(ds,d,dd));
+      visibleDays++;
+    }
+
+    if(visibleDays === 0){
+      const empty=document.createElement("div");
+      empty.className="mobile-empty-calendar";
+      empty.textContent="Aucune émission programmée ce mois-ci.";
+      cal.appendChild(empty);
     }
   } else {
     // Vue grille desktop
