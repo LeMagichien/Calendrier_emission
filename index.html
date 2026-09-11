@@ -2718,6 +2718,38 @@ form input:focus,#tmdbKeyInput:focus,#tmdbSearch:focus{
   }
 }
 
+
+#cloudLoading{
+  position:fixed;
+  left:50%;
+  bottom:22px;
+  transform:translateX(-50%);
+  z-index:9999;
+  padding:9px 15px;
+  border:1px solid rgba(198,154,80,.45);
+  border-radius:7px;
+  background:rgba(8,17,25,.96);
+  color:#d9bd87;
+  font-family:Georgia,"Times New Roman",serif;
+  font-size:11px;
+  letter-spacing:.7px;
+  box-shadow:0 8px 25px rgba(0,0,0,.45);
+}
+#cloudLoading.hidden{
+  opacity:0;
+  pointer-events:none;
+  transition:opacity .25s ease;
+}
+
+
+@media(max-width:640px){
+  #cloudLoading{
+    bottom:80px;
+    max-width:calc(100% - 30px);
+    white-space:nowrap;
+  }
+}
+
 </style>
 </head>
 <body>
@@ -2810,6 +2842,8 @@ form input:focus,#tmdbKeyInput:focus,#tmdbSearch:focus{
   </div>
 </footer>
 
+<div id="cloudLoading">⚓ Chargement du journal de bord…</div>
+
 <div id="notification"></div>
 
 <script>
@@ -2856,32 +2890,59 @@ const GIST_FILENAME = "calendrier.json";
 const GIST_URL = `https://api.github.com/gists/${GIST_ID}`;
 
 async function loadFromCloud(){
+  let remote = null;
+
+  // 1. GitHub API — source principale
   try{
     const res = await fetch(GIST_URL, {
-      headers:{"Authorization": `token ${GIST_TOKEN}`, "Accept": "application/vnd.github.v3+json"}
+      headers:{
+        "Authorization": `token ${GIST_TOKEN}`,
+        "Accept": "application/vnd.github.v3+json"
+      },
+      cache:"no-store"
     });
-    const data = await res.json();
-    const raw = data.files?.[GIST_FILENAME]?.content;
-    if(raw){
-      const parsed = JSON.parse(raw);
-      const remote = Array.isArray(parsed) ? parsed : (parsed.events || null);
-      // Ne jamais écraser avec un Gist vide si on a des données locales
-      const local = JSON.parse(localStorage.getItem("events") || "[]");
-      if(remote !== null && remote.length > 0){
-        events = remote;
-        localStorage.setItem("events", JSON.stringify(events));
-      } else if(local.length > 0){
-        // Gist vide mais données locales présentes : on pousse le local vers le Gist
-        events = local;
-        saveToCloud();
+    if(res.ok){
+      const data = await res.json();
+      const raw = data.files?.[GIST_FILENAME]?.content;
+      if(raw){
+        const parsed = JSON.parse(raw);
+        remote = Array.isArray(parsed) ? parsed : (parsed.events || null);
       }
     }
   }catch(err){
-    console.error("Erreur chargement Gist:", err);
-    // Fallback localStorage
-    const local = JSON.parse(localStorage.getItem("events") || "[]");
-    if(local.length > 0) events = local;
+    console.warn("API GitHub indisponible, tentative Raw Gist…", err);
   }
+
+  // 2. Fallback Raw Gist — particulièrement utile sur Safari/iPhone
+  if(!Array.isArray(remote) || remote.length===0){
+    try{
+      const rawUrl=`https://gist.githubusercontent.com/${GIST_ID}/raw/${GIST_FILENAME}`;
+      const res=await fetch(rawUrl,{cache:"no-store"});
+      if(res.ok){
+        const parsed=JSON.parse(await res.text());
+        remote=Array.isArray(parsed) ? parsed : (parsed.events || null);
+      }
+    }catch(err){
+      console.warn("Raw Gist indisponible.",err);
+    }
+  }
+
+  const local=JSON.parse(localStorage.getItem("events")||"[]");
+
+  // On privilégie toujours les données cloud si elles existent.
+  if(Array.isArray(remote) && remote.length>0){
+    events=remote;
+    localStorage.setItem("events",JSON.stringify(events));
+    return true;
+  }
+
+  // Si le cloud est vide/inaccessible, on garde les données locales.
+  if(local.length>0){
+    events=local;
+    return true;
+  }
+
+  return false;
 }
 
 async function saveToCloud(){
@@ -3249,7 +3310,15 @@ window.addEventListener("scroll",()=>{document.getElementById("topbar").classLis
 window.addEventListener("resize",()=>generateCalendar());
 
 // Chargement initial depuis le cloud, puis affichage
-loadFromCloud().then(()=>generateCalendar());
+(async()=>{
+  const loaded=await loadFromCloud();
+  generateCalendar();
+  const loading=document.getElementById("cloudLoading");
+  if(loading) loading.classList.add("hidden");
+  if(!loaded && !events.length){
+    notify("Aucune donnée synchronisée trouvée","info");
+  }
+})();
 </script>
 </body>
 </html>
