@@ -2792,6 +2792,10 @@ form input:focus,#tmdbKeyInput:focus,#tmdbSearch:focus{
   }
 }
 
+
+/* Synchronisation mobile */
+#cloudLoading.hidden{display:none!important}
+
 </style>
 </head>
 <body>
@@ -2932,78 +2936,83 @@ const GIST_FILENAME = "calendrier.json";
 const GIST_URL = `https://api.github.com/gists/${GIST_ID}`;
 
 async function loadFromCloud(){
-  let remote = null;
-  let rawUrl = null;
+  let remote=null;
+  let rawUrl=null;
 
-  // 1) GitHub API avec le jeton configuré.
+  // IMPORTANT :
+  // Pour la lecture, on tente d'abord GitHub SANS Authorization.
+  // Cela évite le preflight CORS provoqué par le header Authorization
+  // sur certains navigateurs mobiles/Safari.
   try{
-    const res = await fetch(GIST_URL, {
-      headers:{
-        "Authorization": `token ${GIST_TOKEN}`,
-        "Accept":"application/vnd.github+json"
-      },
+    const res=await fetch(GIST_URL,{
+      headers:{"Accept":"application/vnd.github+json"},
       cache:"no-store"
     });
 
     if(res.ok){
       const data=await res.json();
       const file=data.files?.[GIST_FILENAME];
+      rawUrl=file?.raw_url || null;
 
-      // GitHub peut ne pas inclure le contenu si le fichier est tronqué.
       if(file?.content){
         try{
           const parsed=JSON.parse(file.content);
-          remote=Array.isArray(parsed) ? parsed : (parsed.events || null);
-        }catch(e){
-          console.warn("Contenu Gist non JSON, utilisation du Raw URL.");
-        }
+          remote=Array.isArray(parsed)?parsed:(parsed.events||null);
+        }catch(e){}
       }
-
-      rawUrl=file?.raw_url || null;
-    }else{
-      console.warn("GitHub API avec jeton:",res.status);
     }
   }catch(err){
-    console.warn("GitHub API avec jeton indisponible.",err);
+    console.warn("Lecture publique du Gist échouée.",err);
   }
 
-  // 2) Si le contenu API n'a pas fonctionné, récupérer directement le
-  // Raw URL fournie par GitHub. Cela évite de construire une mauvaise URL
-  // gist.githubusercontent.com.
+  // Si la lecture publique n'est pas disponible, deuxième tentative
+  // avec le jeton existant.
   if(!Array.isArray(remote) || remote.length===0){
     try{
-      if(!rawUrl){
-        // L'API publique peut fournir le raw_url même si le premier appel
-        // avec le jeton échoue.
-        const res=await fetch(GIST_URL,{
-          headers:{"Accept":"application/vnd.github+json"},
-          cache:"no-store"
-        });
-        if(res.ok){
-          const data=await res.json();
-          rawUrl=data.files?.[GIST_FILENAME]?.raw_url || null;
-        }
-      }
+      const res=await fetch(GIST_URL,{
+        headers:{
+          "Authorization":`Bearer ${GIST_TOKEN}`,
+          "Accept":"application/vnd.github+json"
+        },
+        cache:"no-store"
+      });
 
-      if(rawUrl){
-        const res=await fetch(rawUrl,{cache:"no-store"});
-        if(res.ok){
-          const parsed=JSON.parse(await res.text());
-          remote=Array.isArray(parsed) ? parsed : (parsed.events || null);
+      if(res.ok){
+        const data=await res.json();
+        const file=data.files?.[GIST_FILENAME];
+        rawUrl=file?.raw_url || rawUrl || null;
+
+        if(file?.content){
+          const parsed=JSON.parse(file.content);
+          remote=Array.isArray(parsed)?parsed:(parsed.events||null);
         }
+      }else{
+        console.warn("Lecture GitHub authentifiée:",res.status);
       }
     }catch(err){
-      console.warn("Impossible de lire le Raw Gist.",err);
+      console.warn("Lecture authentifiée échouée.",err);
     }
   }
 
-  // 3) Dernier recours : données locales déjà présentes sur l'appareil.
+  // Dernier recours : lecture directe du fichier Raw.
+  if((!Array.isArray(remote) || remote.length===0) && rawUrl){
+    try{
+      const res=await fetch(rawUrl,{cache:"no-store"});
+      if(res.ok){
+        const parsed=JSON.parse(await res.text());
+        remote=Array.isArray(parsed)?parsed:(parsed.events||null);
+      }
+    }catch(err){
+      console.warn("Lecture Raw Gist échouée.",err);
+    }
+  }
+
+  // Cache local.
   let local=[];
   try{
-    local=JSON.parse(localStorage.getItem("events")||"[]");
-  }catch(e){
-    local=[];
-  }
+    const cached=JSON.parse(localStorage.getItem("events")||"[]");
+    local=Array.isArray(cached)?cached:[];
+  }catch(e){}
 
   if(Array.isArray(remote) && remote.length>0){
     events=remote;
@@ -3395,7 +3404,7 @@ window.addEventListener("resize",()=>generateCalendar());
     const loaded=await loadFromCloud();
     generateCalendar();
     if(!loaded && !events.length){
-      notify("Impossible de récupérer le Journal de bord","error");
+      notify("Journal de bord inaccessible : vérifie la synchronisation GitHub","error");
     }
   }catch(err){
     console.error("Erreur chargement initial:",err);
