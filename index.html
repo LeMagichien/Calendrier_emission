@@ -2750,6 +2750,48 @@ form input:focus,#tmdbKeyInput:focus,#tmdbSearch:focus{
   }
 }
 
+
+/* ==========================================================
+   CAPTQC V13 — MOBILE : DONNÉES + AFFICHAGE ROBUSTE
+   ========================================================== */
+@media(max-width:640px){
+  #calendar.calendar.month{
+    display:flex!important;
+    flex-direction:column!important;
+    width:100%!important;
+    min-width:0!important;
+  }
+
+  #calendar.calendar.month .day{
+    display:flex!important;
+    flex-direction:column!important;
+    width:100%!important;
+    min-width:0!important;
+    height:auto!important;
+    min-height:0!important;
+    visibility:visible!important;
+    opacity:1!important;
+  }
+
+  #calendar.calendar.month .event{
+    display:flex!important;
+    visibility:visible!important;
+    opacity:1!important;
+    width:100%!important;
+    min-width:0!important;
+    max-width:none!important;
+    height:auto!important;
+    min-height:48px!important;
+    flex-shrink:0!important;
+  }
+
+  #calendar.calendar.month .event > span:not(.btn){
+    display:block!important;
+    visibility:visible!important;
+    opacity:1!important;
+  }
+}
+
 </style>
 </head>
 <body>
@@ -2891,52 +2933,84 @@ const GIST_URL = `https://api.github.com/gists/${GIST_ID}`;
 
 async function loadFromCloud(){
   let remote = null;
+  let rawUrl = null;
 
-  // 1. GitHub API — source principale
+  // 1) GitHub API avec le jeton configuré.
   try{
     const res = await fetch(GIST_URL, {
       headers:{
         "Authorization": `token ${GIST_TOKEN}`,
-        "Accept": "application/vnd.github.v3+json"
+        "Accept":"application/vnd.github+json"
       },
       cache:"no-store"
     });
+
     if(res.ok){
-      const data = await res.json();
-      const raw = data.files?.[GIST_FILENAME]?.content;
-      if(raw){
-        const parsed = JSON.parse(raw);
-        remote = Array.isArray(parsed) ? parsed : (parsed.events || null);
+      const data=await res.json();
+      const file=data.files?.[GIST_FILENAME];
+
+      // GitHub peut ne pas inclure le contenu si le fichier est tronqué.
+      if(file?.content){
+        try{
+          const parsed=JSON.parse(file.content);
+          remote=Array.isArray(parsed) ? parsed : (parsed.events || null);
+        }catch(e){
+          console.warn("Contenu Gist non JSON, utilisation du Raw URL.");
+        }
       }
+
+      rawUrl=file?.raw_url || null;
+    }else{
+      console.warn("GitHub API avec jeton:",res.status);
     }
   }catch(err){
-    console.warn("API GitHub indisponible, tentative Raw Gist…", err);
+    console.warn("GitHub API avec jeton indisponible.",err);
   }
 
-  // 2. Fallback Raw Gist — particulièrement utile sur Safari/iPhone
+  // 2) Si le contenu API n'a pas fonctionné, récupérer directement le
+  // Raw URL fournie par GitHub. Cela évite de construire une mauvaise URL
+  // gist.githubusercontent.com.
   if(!Array.isArray(remote) || remote.length===0){
     try{
-      const rawUrl=`https://gist.githubusercontent.com/${GIST_ID}/raw/${GIST_FILENAME}`;
-      const res=await fetch(rawUrl,{cache:"no-store"});
-      if(res.ok){
-        const parsed=JSON.parse(await res.text());
-        remote=Array.isArray(parsed) ? parsed : (parsed.events || null);
+      if(!rawUrl){
+        // L'API publique peut fournir le raw_url même si le premier appel
+        // avec le jeton échoue.
+        const res=await fetch(GIST_URL,{
+          headers:{"Accept":"application/vnd.github+json"},
+          cache:"no-store"
+        });
+        if(res.ok){
+          const data=await res.json();
+          rawUrl=data.files?.[GIST_FILENAME]?.raw_url || null;
+        }
+      }
+
+      if(rawUrl){
+        const res=await fetch(rawUrl,{cache:"no-store"});
+        if(res.ok){
+          const parsed=JSON.parse(await res.text());
+          remote=Array.isArray(parsed) ? parsed : (parsed.events || null);
+        }
       }
     }catch(err){
-      console.warn("Raw Gist indisponible.",err);
+      console.warn("Impossible de lire le Raw Gist.",err);
     }
   }
 
-  const local=JSON.parse(localStorage.getItem("events")||"[]");
+  // 3) Dernier recours : données locales déjà présentes sur l'appareil.
+  let local=[];
+  try{
+    local=JSON.parse(localStorage.getItem("events")||"[]");
+  }catch(e){
+    local=[];
+  }
 
-  // On privilégie toujours les données cloud si elles existent.
   if(Array.isArray(remote) && remote.length>0){
     events=remote;
     localStorage.setItem("events",JSON.stringify(events));
     return true;
   }
 
-  // Si le cloud est vide/inaccessible, on garde les données locales.
   if(local.length>0){
     events=local;
     return true;
@@ -2958,7 +3032,13 @@ async function saveToCloud(){
 /* ========================================================== */
 /* DONNÉES */
 /* ========================================================== */
-let events = JSON.parse(localStorage.getItem("events")) || [];
+let events = [];
+try{
+  const cachedEvents=JSON.parse(localStorage.getItem("events")||"[]");
+  events=Array.isArray(cachedEvents)?cachedEvents:[];
+}catch(e){
+  events=[];
+}
 let viewMode = "month", currentDate = new Date();
 let currentSeriesTitle = null;
 
@@ -3311,12 +3391,19 @@ window.addEventListener("resize",()=>generateCalendar());
 
 // Chargement initial depuis le cloud, puis affichage
 (async()=>{
-  const loaded=await loadFromCloud();
-  generateCalendar();
-  const loading=document.getElementById("cloudLoading");
-  if(loading) loading.classList.add("hidden");
-  if(!loaded && !events.length){
-    notify("Aucune donnée synchronisée trouvée","info");
+  try{
+    const loaded=await loadFromCloud();
+    generateCalendar();
+    if(!loaded && !events.length){
+      notify("Impossible de récupérer le Journal de bord","error");
+    }
+  }catch(err){
+    console.error("Erreur chargement initial:",err);
+    generateCalendar();
+    notify("Erreur de synchronisation du Journal de bord","error");
+  }finally{
+    const loading=document.getElementById("cloudLoading");
+    if(loading) loading.classList.add("hidden");
   }
 })();
 </script>
