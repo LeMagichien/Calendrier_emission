@@ -63,63 +63,61 @@ h1{
   display:flex;
   flex-direction:column;
   align-items:center;
-  overflow:hidden;
-
-  /* État réduit par défaut */
-  max-height:38px;
-  padding:8px 18px;
-  background:rgba(11,13,18,.72);
-  transition:max-height .35s cubic-bezier(.4,0,.2,1),
-             padding .35s ease,
-             background .25s ease,
-             box-shadow .25s ease;
-  cursor:pointer;
-}
-
-#topbar:hover,
-#topbar.pinned{
-  max-height:600px;
-  padding:12px 18px 15px;
   background:rgba(11,13,18,.97);
-  box-shadow:0 8px 30px rgba(0,0,0,.38);
-  cursor:default;
-}
-
-/* Indicateur visuel quand réduit */
-#topbar::before{
-  content:"▾ CAPTQC — JOURNAL DE BORD";
-  position:absolute;
-  left:50%;
-  transform:translateX(-50%);
-  font-size:11px;
-  letter-spacing:2px;
-  font-weight:750;
-  color:rgba(201,148,78,.70);
-  font-family:Georgia,"Times New Roman",serif;
-  pointer-events:none;
-  opacity:1;
-  transition:opacity .2s ease;
-  white-space:nowrap;
-}
-
-#topbar:hover::before,
-#topbar.pinned::before{
-  opacity:0;
-}
-
-/* Cacher le contenu quand réduit pour éviter le débordement */
-#topbar > *{
-  opacity:0;
-  transition:opacity .2s ease .05s;
-}
-
-#topbar:hover > *,
-#topbar.pinned > *{
-  opacity:1;
+  padding:12px 18px 15px;
+  gap:13px;
+  transition:box-shadow .25s ease;
 }
 
 #topbar.scrolled{
   box-shadow:0 8px 30px rgba(0,0,0,.38);
+}
+
+/* Contenu masquable */
+#topbarCollapsible{
+  width:100%;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:13px;
+  overflow:hidden;
+  max-height:600px;
+  transition:max-height .35s cubic-bezier(.4,0,.2,1),
+             opacity .25s ease;
+  opacity:1;
+}
+
+#topbarCollapsible.collapsed{
+  max-height:0;
+  opacity:0;
+  pointer-events:none;
+}
+
+/* Barre de titre cliquable */
+#topbarHandle{
+  width:100%;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  cursor:pointer;
+  user-select:none;
+}
+
+#topbarToggleBtn{
+  background:none;
+  border:1px solid rgba(201,148,78,.40);
+  border-radius:6px;
+  color:rgba(201,148,78,.80);
+  font-size:12px;
+  padding:3px 8px;
+  cursor:pointer;
+  transition:border-color .2s, color .2s;
+  flex-shrink:0;
+}
+
+#topbarToggleBtn:hover{
+  border-color:rgba(201,148,78,.90);
+  color:#e4bd79;
 }
 
 .topbar-header{
@@ -889,7 +887,7 @@ form::before{
 /* En-têtes calendrier */
 .weekdays{
   position:sticky;
-  top:108px;
+  top:var(--topbar-h, 60px);
   z-index:50;
   padding:0 1px;
   background:transparent;
@@ -2866,7 +2864,16 @@ form input:focus,#tmdbKeyInput:focus,#tmdbSearch:focus{
     <button id="menuToggle" aria-label="Menu">☰</button>
   </div>
 
+  <!-- Barre de titre + bouton toggle -->
+  <div id="topbarHandle">
+    <div style="display:flex;align-items:center;gap:13px;min-width:0">
+      <!-- le captqc-header est déjà au-dessus, on laisse juste le toggle -->
+    </div>
+    <button id="topbarToggleBtn" title="Afficher/Masquer">▲ Réduire</button>
+  </div>
+
   <!-- Navigation mois -->
+  <div id="topbarCollapsible">
   <div class="controls">
     <button id="prevBtn">◀</button>
     <span id="monthLabel"></span>
@@ -2912,6 +2919,7 @@ form input:focus,#tmdbKeyInput:focus,#tmdbSearch:focus{
       <div id="progressBar"></div>
     </div>
   </div>
+  </div><!-- fin topbarCollapsible -->
 </div>
 
 <main style="padding:0 8px">
@@ -2978,17 +2986,30 @@ document.getElementById("menuToggle").addEventListener("click", () => {
   document.getElementById("collapsibleMenu").classList.toggle("open");
 });
 
-/* ===== TOPBAR PIN ===== */
+/* ===== TOPBAR TOGGLE ===== */
 (function(){
-  const bar = document.getElementById("topbar");
-  // Clic sur la barre réduite = épingler ouvert
-  bar.addEventListener("click", (e) => {
-    if(!bar.matches(":hover")) return;
-    // On épingle si on clique sur la barre elle-même (pas sur un bouton)
-    if(e.target === bar) bar.classList.toggle("pinned");
+  const btn = document.getElementById("topbarToggleBtn");
+  const col = document.getElementById("topbarCollapsible");
+  const topbar = document.getElementById("topbar");
+  if(!btn || !col || !topbar) return;
+
+  function updateTopbarHeight(){
+    requestAnimationFrame(()=>{
+      const h = topbar.getBoundingClientRect().height;
+      document.documentElement.style.setProperty("--topbar-h", h + "px");
+    });
+  }
+
+  btn.addEventListener("click", () => {
+    const isCollapsed = col.classList.toggle("collapsed");
+    btn.textContent = isCollapsed ? "▼ Afficher" : "▲ Réduire";
+    // Attendre la fin de la transition CSS avant de recalculer
+    setTimeout(updateTopbarHeight, 380);
   });
-  // Double-clic pour désépingler
-  bar.addEventListener("dblclick", () => bar.classList.remove("pinned"));
+
+  // Init
+  updateTopbarHeight();
+  window.addEventListener("resize", updateTopbarHeight);
 })();
 
 /* ========================================================== */
